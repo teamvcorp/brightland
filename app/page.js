@@ -3,93 +3,52 @@ import styles from "./page.module.css";
 
 export default function Home() {
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>app/page.js</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <>
+      <header>
+        <img src="" alt="Bright Land Logo" />
+
+        <div className="headerNavContainer">
+          <button className="headerNav">FLOOR PLANS</button>
+          <button className="headerNav">AMENITIES</button>
+          <button className="headerNav">GALLERY</button>
+          <button className="headerNav">NEIGHBORHOOD</button>
+          <button className="headerNav">RESIDENTS</button>
+          <button className="headerNav">CONTACT</button>
         </div>
-      </div>
 
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
+        <div className="headerBtnContainer">
+          <button className="payBtn btn">PAY MY RENT</button>
+          <button className="scheduleBtn btn">SCHEDULE A TOUR</button>
+        </div>
+      </header>
+      <main>
+        <div className="txtContent">
+          <h1>Welcome to Brightland Apartments on Lake Avenue.</h1>
+          <h2> Discover Your Ideal Home in the Heart of Storm Lake!</h2>
           <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
+            {" "}
+            Are you ready to embrace a unique blend of urban convenience and
+            serene lakeside living? Look no further! Our quaint apartment
+            building in Storm Lake offers the perfect balance of comfort,
+            community, and convenience. Don’t miss out on the opportunity to
+            live in the heart of this beautiful town. Whether you’re a
+            professional, a student, or someone looking for a peaceful lakeside
+            retreat, Brightland Apartments on Lake Avenue has something for
+            everyone.
           </p>
-        </a>
-      </div>
-    </main>
+          <h3>
+            Contact us today to schedule a viewing or for any inquiries. Your
+            dream apartment is just a click away!
+          </h3>
+        </div>
+        <div>
+          <img src="" alt="Apartment Building" />
+        </div>
+      </main>
+      <footer>
+        <div> &copy;Bright Land Apartments 2023 </div>
+        <div>Managed By: The Von Der Becke Academy Corp.</div>
+      </footer>
+    </>
   );
 }
