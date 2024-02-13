@@ -114,7 +114,7 @@ h3 {
   font-weight: var(--bold);
 }
 p {
-  font-size: .55rem;
+  font-size: .6rem;
 }
 /* BUTTONS/NAV */
 /* buttons */
@@ -193,7 +193,7 @@ header {
   color: white; 
 }
 .txtContent {
-  width: 52%;
+  max-width: 52%;
   text-align: center;
   padding: 0 .5rem 0 .5rem;
 }
@@ -215,20 +215,16 @@ line-height: 1.5rem;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   text-align: center;
-  grid-row-gap: 2rem;
-  margin-top: 1rem;
+  grid-row-gap: 3rem;
+  margin-top: 2rem;
+  color: var(--darkBlue);
  
  
 }
 .landingSectionNav h1 {
   font-size: 1.5rem;
 }
-.row1, .row2 {
-display: flex;
-justify-content: space-between;
-align-items: center;
-text-align: center;
-}
+
 
 /* FOOTER */
 footer {

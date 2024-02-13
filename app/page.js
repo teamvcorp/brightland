@@ -38,12 +38,12 @@ export default function Home() {
 
         <section className="landingSectionNav">
 
-        <span> <FaHome size={50} /><h1>Rentals</h1></span>
-        <span><FaWifi size={50}/> <h1>Amenities</h1></span>
+        <span> <FaHome size={50} color='#54738e'/><h1>Rentals</h1></span>
+        <span><FaWifi size={50} color='#54738e'/> <h1>Amenities</h1></span>
        
 
-        <span> <GiModernCity size={50}/> <h1>Neighborhood</h1></span>
-        <span> <FaPhone size={50}/> <h1>Contact</h1></span>
+        <span> <GiModernCity size={50} color='#54738e'/> <h1>Neighborhood</h1></span>
+        <span> <FaPhone size={50} color='#54738e'/> <h1>Contact</h1></span>
       
         </section>
       </main>
