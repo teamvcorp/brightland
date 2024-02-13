@@ -11,7 +11,20 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <header>
+          <img className="logo" src="/Logo3Sun.gif" alt="Bright Land Logo" />
+          <div className="headerBtnContainer">
+            <button className="payBtn btn">PAY MY RENT</button>
+            <button className="scheduleBtn btn">SCHEDULE TOUR</button>
+          </div>
+        </header>
+        {children}
+        <footer>
+          <div> &copy;Bright Land Apartments 2023 </div>
+          <div>Managed By: The Von Der Becke Academy Corp.</div>
+        </footer>
+      </body>
     </html>
   );
 }

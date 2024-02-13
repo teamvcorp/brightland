@@ -1,31 +1,21 @@
 import Image from "next/image";
 import styles from "./page.module.css";
+import Dropdown from "@/components/Dropdown";
+
+import { FaHome, FaWifi, FaPhone  } from "react-icons/fa";
+import { GiModernCity } from "react-icons/gi";
+
 
 export default function Home() {
   return (
     <>
-      <header>
-        <img src="" alt="Bright Land Logo" />
-
-        <div className="headerNavContainer">
-          <button className="headerNav">FLOOR PLANS</button>
-          <button className="headerNav">AMENITIES</button>
-          <button className="headerNav">GALLERY</button>
-          <button className="headerNav">NEIGHBORHOOD</button>
-          <button className="headerNav">RESIDENTS</button>
-          <button className="headerNav">CONTACT</button>
-        </div>
-
-        <div className="headerBtnContainer">
-          <button className="payBtn btn">PAY MY RENT</button>
-          <button className="scheduleBtn btn">SCHEDULE A TOUR</button>
-        </div>
-      </header>
       <main>
+        <section className="landingSectionWelcome">
+        <div className="txtContainer">
         <div className="txtContent">
           <h1>Welcome to Brightland Apartments on Lake Avenue.</h1>
           <h2> Discover Your Ideal Home in the Heart of Storm Lake!</h2>
-          <p>
+          <p className="landingP">
             {" "}
             Are you ready to embrace a unique blend of urban convenience and
             serene lakeside living? Look no further! Our quaint apartment
@@ -36,19 +26,28 @@ export default function Home() {
             retreat, Brightland Apartments on Lake Avenue has something for
             everyone.
           </p>
-          <h3>
-            Contact us today to schedule a viewing or for any inquiries. Your
-            dream apartment is just a click away!
+          <h3 className="landingH3">
+            Contact Us Today! 
           </h3>
         </div>
         <div>
-          <img src="" alt="Apartment Building" />
+          <img className="landingImg" src="/kitchen.jpg" alt="Apartment Building" />
         </div>
+        </div>
+        </section>
+
+        <section className="landingSectionNav">
+
+        <span> <FaHome size={50} /><h1>Rentals</h1></span>
+        <span><FaWifi size={50}/> <h1>Amenities</h1></span>
+       
+
+        <span> <GiModernCity size={50}/> <h1>Neighborhood</h1></span>
+        <span> <FaPhone size={50}/> <h1>Contact</h1></span>
+      
+        </section>
       </main>
-      <footer>
-        <div> &copy;Bright Land Apartments 2023 </div>
-        <div>Managed By: The Von Der Becke Academy Corp.</div>
-      </footer>
+      
     </>
   );
 }
