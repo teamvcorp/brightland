@@ -1,0 +1,139 @@
+.formContainer {
+  width: 75%;
+  margin: 4rem auto;
+}
+
+.formBackground {
+  background-color: white;
+  border-radius: 8px;
+  padding: 0 5rem 5rem 5rem;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+  margin-bottom: 10rem;
+}
+/* .fixed {
+   
+} */
+
+legend {
+  font-size: 2rem;
+  font-family: "oswald", sans-serif;
+  font-weight: 200;
+  padding: 5rem 0 5rem 0;
+}
+label {
+  font-size: 1.75rem;
+  font-family: "lato", sans-serif;
+  /* line-height: 6rem; */
+  font-weight: 700;
+  text-align: left;
+}
+.formInput,
+.textareaMed {
+  border: 0.5px solid grey;
+  width: 20%;
+  max-width: 27rem;
+  min-width: 5rem;
+
+  border-radius: 4px;
+  height: 3rem;
+  resize: none;
+}
+.formMessage:hover,
+.textareaMed:hover,
+.formInput:hover {
+  cursor: pointer;
+  border: 2.5px solid var(--seafoam);
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+}
+.formMessage:active,
+.textareaMed:active,
+.formInput:active {
+  cursor: text;
+  padding: 0.5rem;
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+}
+.formMessage:focus,
+.textareaMed:focus,
+.formInput:focus {
+  cursor: text;
+  padding: 0.5rem;
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+}
+
+.formSection {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-evenly;
+  margin: 2rem 0;
+}
+
+.spanish {
+  font-size: 1.5rem;
+}
+.formSectionCheck {
+  display: flex;
+  /* align-items: center; */
+  justify-content: space-around;
+}
+.checkboxContainer {
+  display: flex;
+  align-items: center;
+}
+input.checkbox {
+  height: 3rem;
+  width: 3rem;
+  margin-right: 2rem;
+}
+input.checkbox:hover {
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
+}
+.formSectionMessage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 3rem;
+}
+.message {
+  align-self: flex-start;
+}
+.formMessage {
+  width: 100%;
+  height: 10rem;
+  border: 0.5px solid grey;
+  border-radius: 4px;
+  resize: none;
+}
+.formSubmitBtnContainer {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 3rem;
+}
+.formSubmitBtn {
+  background-color: var(--red);
+}
+
+@media screen and (max-width: 1750px) {
+  .formSection {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .formInput {
+    width: 100%;
+  }
+
+  .formSectionCheck {
+    display: flex;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    width: 80%;
+    line-height: 5rem;
+  }
+  .checkbox {
+    margin-left: 2rem;
+  }
+
+
+}
