@@ -21,14 +21,14 @@ export default function RootLayout({ children }) {
           <div className="headerBtnContainer">
             <button className="payBtn btn">PAY MY RENT</button>
             <Link href="/enroll">
-              <button className="scheduleBtn btn">SCHEDULE TOUR</button>
+              <button className="scheduleBtn btn">Contact Us</button>
             </Link>
           </div>
         </header>
         {children}
         <footer>
           <div> &copy;Bright Land Apartments 2023 </div>
-          <div>Managed By: The Von Der Becke Academy Corp.</div>
+          <div>Site By: TeamVCorp.</div>
         </footer>
       </body>
     </html>
