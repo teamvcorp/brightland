@@ -48,9 +48,6 @@ const Rentals = () => {
               <th scope="col" className="py-2 px-3 hidden sm:table-cell">
                 Extra Adult
               </th>
-              <th scope="col" className="py-2 px-3 hidden sm:table-cell">
-                Ammenities
-              </th>
               <th scope="col" className="py-3 px-6">
                 Status
               </th>
