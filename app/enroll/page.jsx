@@ -88,7 +88,7 @@ export default function ContactUs() {
             <div className="formSectionMessage">
 
         <label htmlFor="message" className="message">
-          Message<span className="text-red-500">*</span>
+          Message: PLease mention the Apartment you are interested in.<span className="text-red-500">*</span>
         </label>
         <textarea
           name="message"

@@ -5,9 +5,10 @@ export const resRentalList = [
     Sqft: 680,
     desc: "2 Bedroom 1 bath",
     rent: 1000,
+    extraAdult: 100,
     ammenities:
       "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
-      status: 'Rented'
+    status: "Rented",
   },
   {
     name: "Apt 2",
@@ -15,9 +16,10 @@ export const resRentalList = [
     Sqft: 621,
     desc: "1 Bedroom 1 bath",
     rent: 800,
+    extraAdult: 100,
     ammenities:
       "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
-      status: 'Rented'
+    status: "Rented",
   },
   {
     name: "Apt 3",
@@ -25,9 +27,10 @@ export const resRentalList = [
     Sqft: 500,
     desc: "1 Bedroom 1 bath",
     rent: 800,
+    extraAdult: 100,
     ammenities:
       "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
-      status: 'Rented'
+    status: "Rented",
   },
   {
     name: "Apt 4",
@@ -35,9 +38,10 @@ export const resRentalList = [
     Sqft: 528,
     desc: "1 Bedroom 1 bath",
     rent: 850,
+    extraAdult: 100,
     ammenities:
       "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
-      status: 'Being Remodeled'
+    status: "Being Remodeled",
   },
   {
     name: "Apt 5",
@@ -45,9 +49,10 @@ export const resRentalList = [
     Sqft: 840,
     desc: "2 Bedroom 1 bath",
     rent: 900,
+    extraAdult: 100,
     ammenities:
       "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
-      status: 'available'
+    status: "Rented",
   },
   {
     name: "Apt 6",
@@ -55,9 +60,10 @@ export const resRentalList = [
     Sqft: 500,
     desc: "2 Bedroom 1 bath",
     rent: 800,
+    extraAdult: 100,
     ammenities:
       "Apartment includes Highspeed internet, onsite laundry, electric, and water and sewer",
-      status: 'Being Remodeled'
+    status: "Rented",
   },
   {
     name: "Apt 7",
@@ -65,23 +71,86 @@ export const resRentalList = [
     Sqft: 450,
     desc: "2 Bedroom 1 bath",
     rent: 850,
+    extraAdult: 100,
     ammenities:
       "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
-      status: 'Being Remodeled'
+    status: "Rented",
   },
 ];
+ 
 export const commRentalList = [
-  { name: "Unit 1", Sqft: 2400, rent: 1500, type: 'Commercial',status: 'Rented' },
-  { name: "Unit 2", Sqft: 2400, rent: 1500, type: 'Commercial', status: 'available' },
-  { name: "Unit 3", Sqft: 400, rent: 450, type: 'Commercial', status: 'Rented' },
-  { name: "Unit 4", Sqft: 728, rent: 1000, type: 'Commercial', status: 'Being Remodeled' },
-  { name: "Unit 5", Sqft: 1040, rent: 1000, type: 'Commercial',status: 'available' },
+  {
+    name: "Unit 1",
+    Sqft: 2400,
+    rent: 1500,
+    type: "Commercial",
+    status: "Rented",
+  },
+  {
+    name: "Unit 2",
+    Sqft: 2400,
+    rent: 1500,
+    type: "Commercial",
+    status: "Rented",
+  },
+  {
+    name: "Unit 3",
+    Sqft: 400,
+    rent: 450,
+    type: "Commercial",
+    status: "Rented",
+  },
+  {
+    name: "Unit 4",
+    Sqft: 728,
+    rent: 1000,
+    type: "Commercial",
+    status: "Being Remodeled",
+  },
+  {
+    name: "Unit 5",
+    Sqft: 1040,
+    rent: 1000,
+    type: "Commercial",
+    status: "available",
+  },
 ];
+
 export const houseRentalList = [
-  { name: "Unit 1", Sqft: 2400, rent: 1500, type: 'Commercial',status: 'Rented' },
-  { name: "Unit 2", Sqft: 2400, rent: 1500, type: 'Commercial', status: 'available' },
-  { name: "Unit 3", Sqft: 400, rent: 450, type: 'Commercial', status: 'Rented' },
-  { name: "Unit 4", Sqft: 728, rent: 1000, type: 'Commercial', status: 'Being Remodeled' },
-  { name: "Unit 5", Sqft: 1040, rent: 1000, type: 'Commercial',status: 'available' },
+  {
+    name: "Unit 1",
+    Sqft: 2400,
+    rent: 1500,
+    type: "Commercial",
+    status: "Rented",
+  },
+  {
+    name: "Unit 2",
+    Sqft: 2400,
+    rent: 1500,
+    type: "Commercial",
+    status: "available",
+  },
+  {
+    name: "Unit 3",
+    Sqft: 400,
+    rent: 450,
+    type: "Commercial",
+    status: "Rented",
+  },
+  {
+    name: "Unit 4",
+    Sqft: 728,
+    rent: 1000,
+    type: "Commercial",
+    status: "Being Remodeled",
+  },
+  {
+    name: "Unit 5",
+    Sqft: 1040,
+    rent: 1000,
+    type: "Commercial",
+    status: "available",
+  },
 ];
-4332
+

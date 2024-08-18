@@ -13,8 +13,8 @@ export const POST = async (request) => {
     } = body;
     const emailTemplate =
          `<div>
-            <p>Parents name is: ${fullname}, they can be reached at the email address ${email}, or by phone ${phone}. They have the following considerations "${message}"</p>
-          
+            <p>Potenital Tennents name is: ${fullname}, they can be reached at the email address ${email}, or by phone ${phone}. </p>
+          <p>They would like to scheudle a tour of the following apt.${message}
           </div>`;
     await sendgrid.send({
       to: "blandinvest@gmail.com", // Your email where you'll receive emails
