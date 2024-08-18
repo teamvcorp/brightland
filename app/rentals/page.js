@@ -10,7 +10,6 @@ const Rentals = () => {
         <td className="py-4 px-6">{listing.desc}</td>
         <td className="py-4 px-6">{listing.rent}</td>
         <td className="py-2 px-3 hidden sm:table-cell">{listing.extraAdult}</td>
-        <td className="py-2 px-3 hidden sm:table-cell">{listing.ammenities}</td>
         <td className="py-4 px-6">{listing.status}</td>
       </tr>
     );
@@ -59,6 +58,8 @@ const Rentals = () => {
           </thead>
           <tbody>{resList}</tbody>
         </table>
+        <p className='text-center py-4 px-6'>Ammenities: Apartment includes Highspeed internet, onsite laundry, water and sewer</p>,
+        
       </div>
       <div className="overflow-x-auto relative shadow-md sm:rounded-lg">
         <h3 className="text-center border border-gray-200 p-4">Commercial Listings</h3>
