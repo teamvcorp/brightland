@@ -7,7 +7,7 @@ export const resRentalList = [
     rent: 1000,
     extraAdult: 100,
     ammenities:
-      "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
+      "Apartment includes Highspeed internet, onsite laundry, water and sewer",
     status: "Rented",
   },
   {
@@ -18,7 +18,7 @@ export const resRentalList = [
     rent: 800,
     extraAdult: 100,
     ammenities:
-      "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
+      "Apartment includes Highspeed internet, onsite laundry, water and sewer",
     status: "Rented",
   },
   {
@@ -29,8 +29,8 @@ export const resRentalList = [
     rent: 800,
     extraAdult: 100,
     ammenities:
-      "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
-    status: "Rented",
+      "Apartment includes Highspeed internet, onsite laundry, water and sewer",
+    status: "Being Remodeled",
   },
   {
     name: "Apt 4",
@@ -40,7 +40,7 @@ export const resRentalList = [
     rent: 850,
     extraAdult: 100,
     ammenities:
-      "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
+      "Apartment includes Highspeed internet, onsite laundry, water and sewer",
     status: "Being Remodeled",
   },
   {
@@ -51,7 +51,7 @@ export const resRentalList = [
     rent: 900,
     extraAdult: 100,
     ammenities:
-      "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
+      "Apartment includes Highspeed internet, onsite laundry, water and sewer",
     status: "Rented",
   },
   {
@@ -62,7 +62,7 @@ export const resRentalList = [
     rent: 800,
     extraAdult: 100,
     ammenities:
-      "Apartment includes Highspeed internet, onsite laundry, electric, and water and sewer",
+      "Apartment includes Highspeed internet, onsite laundry, water and sewer",
     status: "Rented",
   },
   {
@@ -73,7 +73,7 @@ export const resRentalList = [
     rent: 850,
     extraAdult: 100,
     ammenities:
-      "Apartment includes Highspeed internet, onsite laundry, and water and sewer",
+      "Apartment includes Highspeed internet, onsite laundry, electric, water and sewer",
     status: "Rented",
   },
 ];
