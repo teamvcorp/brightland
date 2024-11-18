@@ -8,18 +8,19 @@ export const POST = async (request) => {
     const {
       fullname,
       email,
+      address,
       message,
       phone
     } = body;
     const emailTemplate =
          `<div>
-            <p>Potenital Tennents name is: ${fullname}, they can be reached at the email address ${email}, or by phone ${phone}. </p>
-          <p>They would like to scheudle a tour of the following apt.${message}
+            <p>Potenital Client name is: ${fullname}, they can be reached at the email address ${email}, or by phone ${phone}. </p>
+          <p>They would like to talk about, ${message} the project is located at ${address}.</p>
           </div>`;
     await sendgrid.send({
-      to: "blandinvest@gmail.com", // Your email where you'll receive emails
+      to: "admin@thevacorp.com", // Your email where you'll receive emails
       from: "teamVcorp@thevacorp.com", // your website email address here
-      subject: `${fullname}`,
+      subject: `#brightland ${fullname}`,
       html: emailTemplate,
     });
     return new Response(JSON.stringify("You request was sent, succesfully."), {
