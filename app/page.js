@@ -39,24 +39,28 @@ export default function Home() {
   </section>
 
   {/* Navigation Section */}
-  <section className="py-6 flex justify-around items-center text-center bg-white shadow">
+  <section className="py-6 bg-white shadow">
+  <div className="grid grid-cols-2 gap-4 md:flex md:justify-around max-w-md md:max-w-full mx-auto text-center pb-5">
     <Link href="/rentals" className="flex flex-col items-center gap-2">
       <FaHome size={50} color="#54738e" />
-      <h1>Rentals</h1>
+      <h1 className="text-lg font-semibold">Rentals</h1>
     </Link>
     <Link href="/managers" className="flex flex-col items-center gap-2">
       <FaHome size={50} color="#54738e" />
-      <h1>Property Managers</h1>
+      <h1 className="text-lg font-semibold">Property Managers</h1>
     </Link>
     <Link href="/owners" className="flex flex-col items-center gap-2">
       <FaHome size={50} color="#54738e" />
-      <h1>Home Owners</h1>
+      <h1 className="text-lg font-semibold">Home Owners</h1>
     </Link>
     <Link href="/enroll" className="flex flex-col items-center gap-2">
       <FaPhone size={50} color="#54738e" />
-      <h1>Contact</h1>
+      <h1 className="text-lg font-semibold">Contact</h1>
     </Link>
-  </section>
+  </div>
+</section>
+
+
 </main>
 
   );
