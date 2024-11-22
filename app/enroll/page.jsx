@@ -18,7 +18,7 @@ export default function ContactUs() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const res = await fetch("/api/sendgrid", {
+    const res = await fetch("/api/sendgrid/renters", {
       method: "POST",
       body: JSON.stringify(formData),
       headers: {

@@ -22,7 +22,7 @@ const OwnersPage = () => {
     const handleSubmit = async (e) => {
       e.preventDefault();
   
-      const res = await fetch("/api/sendgrid", {
+      const res = await fetch("/api/sendgrid/owners", {
         method: "POST",
         body: JSON.stringify(formData),
         headers: {
