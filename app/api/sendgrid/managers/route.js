@@ -15,7 +15,7 @@ export const POST = async (request) => {
     const emailTemplate =
          `<div>
             <p>Potenital Client name is: ${fullname}, they can be reached at the email address ${email}, or by phone ${phone}. </p>
-          <p>They would like to talk about, ${message} the project is located at ${address}.</p>
+          <p>They would like to talk about, ${message} the project is located at ${address}. This is a property manager.</p>
           </div>`;
     await sendgrid.send({
       to: "admin@thevacorp.com", // Your email where you'll receive emails
