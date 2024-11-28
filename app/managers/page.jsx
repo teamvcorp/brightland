@@ -47,7 +47,7 @@ const PropertyManagerPage = () => {
             </nav>
             <main className="p-6">
                 <h2 className="text-xl font-semibold mb-4">Welcome to the Property Manager Dashboard</h2>
-                <p>This purpose of this page is to collect basic project information. After submittal you can expect a prompt response.</p>
+                <p>This purpose of this page is to collect basic project information. After submittal you can expect a prompt response and great service!.</p>
       
 
                 <section className="bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto">
