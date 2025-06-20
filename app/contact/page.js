@@ -8,6 +8,13 @@ export default function ContactUs() {
   const listingName = searchParams.get("listingName") || "";
   const listingType = searchParams.get("listingType") || "";
 
+  // Wrap useSearchParams in a Suspense boundary as recommended by Next.js
+  // See: https://nextjs.org/docs/messages/missing-suspense-with-use-search-params
+  if (!searchParams) {
+    // This will trigger Suspense fallback until searchParams is available
+    throw Promise.resolve();
+  }
+
   const initialMessage = listingName
     ? `I'm interested in ${listingName} (${listingType}).`
     : "";
