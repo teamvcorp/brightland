@@ -1,9 +1,7 @@
 import Image from "next/image";
-import styles from "./page.module.css";
 import Dropdown from "@/components/Dropdown";
 
-import { FaHome, FaWifi, FaPhone } from "react-icons/fa";
-import { GiModernCity } from "react-icons/gi";
+import { FaHome, FaPhone } from "react-icons/fa";
 import Link from "next/link";
 
 export default function Home() {

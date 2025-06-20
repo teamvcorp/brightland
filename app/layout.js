@@ -16,11 +16,11 @@ export default function RootLayout({ children }) {
       <body className={inter.className}>
         <header>
           <Link href="/">
-            <img className="logo" src="/Logo3Sun.gif" alt="Bright Land Logo" />
+            <Image className="logo" src="/Logo3Sun.gif" alt="Bright Land Logo" unoptimized />
           </Link>
           <div className="headerBtnContainer">
             <button className="payBtn btn">PAY MY RENT</button>
-            <Link href="/enroll">
+            <Link href="/contact">
               <button className="scheduleBtn btn">Contact Us</button>
             </Link>
           </div>
