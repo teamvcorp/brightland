@@ -53,7 +53,7 @@ export default function Home() {
       <FaHome size={50} color="#54738e" />
       <h1 className="text-lg font-semibold">Home Owners</h1>
     </Link>
-    <Link href="/enroll" className="flex flex-col items-center gap-2">
+    <Link href="/contact" className="flex flex-col items-center gap-2">
       <FaPhone size={50} color="#54738e" />
       <h1 className="text-lg font-semibold">Contact</h1>
     </Link>
