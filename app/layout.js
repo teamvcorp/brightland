@@ -16,7 +16,7 @@ export default function RootLayout({ children }) {
       <body className={inter.className}>
         <header>
           <Link href="/">
-            <Image className="logo" src="/Logo3Sun.gif" alt="Bright Land Logo" unoptimized />
+            <img className="logo" src="/Logo3Sun.gif" alt="Bright Land Logo" />
           </Link>
           <div className="headerBtnContainer">
             <button className="payBtn btn">PAY MY RENT</button>
