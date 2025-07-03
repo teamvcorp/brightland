@@ -80,7 +80,7 @@ export const resRentalList = [
 
 export const commRentalList = [
   {
-    name: "Unit 1",
+    name: "503 Lake Ave",
     Sqft: 2400,
     rent: 1500,
     desc: "Commercial",
@@ -88,7 +88,7 @@ export const commRentalList = [
     picture: "https://picsum.photos/seed/unit1/200/120",
   },
   {
-    name: "Unit 2",
+    name: "501 Lake Ave",
     Sqft: 2400,
     rent: 1500,
     desc: "Commercial",
@@ -96,7 +96,7 @@ export const commRentalList = [
     picture: "https://picsum.photos/seed/unit2/200/120",
   },
   {
-    name: "Unit 3",
+    name: "103 Railroad",
     Sqft: 400,
     rent: 450,
     desc: "Commercial",
@@ -104,19 +104,19 @@ export const commRentalList = [
     picture: "https://picsum.photos/seed/unit3/200/120",
   },
   {
-    name: "Unit 4",
+    name: "105 Railroad",
     Sqft: 728,
-    rent: 1000,
+    rent: 850,
     desc: "Commercial",
-    status: "Being Remodeled",
+    status: "Available",
     picture: "https://picsum.photos/seed/unit4/200/120",
   },
   {
-    name: "Unit 5",
+    name: "107 Railroad",
     Sqft: 1040,
     rent: 1000,
     desc: "Commercial",
-    status: "Available",
+    status: "Rented",
     picture: "https://picsum.photos/seed/unit5/200/120",
   },
 ];
