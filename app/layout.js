@@ -19,7 +19,7 @@ export default function RootLayout({ children }) {
             <img className="logo" src="/Logo3Sun.gif" alt="Bright Land Logo" />
           </Link>
           <div className="headerBtnContainer">
-            <button className="payBtn btn">PAY MY RENT</button>
+            <Link href="/license" ><button className="payBtn btn">Apply Now</button></Link>
             <Link href="/contact">
               <button className="scheduleBtn btn">Contact Us</button>
             </Link>

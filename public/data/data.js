@@ -4,7 +4,7 @@ export const resRentalList = [
     type: "residential",
     Sqft: 680,
     desc: "2 Bedroom 1 bath",
-    rent: 850,
+    rent: 950,
     extraAdult: 100,
     ammenities: "Apartment includes Highspeed internet, onsite laundry, water and sewer",
     status: "Rented",
@@ -18,7 +18,7 @@ export const resRentalList = [
     rent: 850,
     extraAdult: 100,
     ammenities: "Apartment includes Highspeed internet, onsite laundry, water and sewer",
-    status: "Rented",
+    status: "Available",
     picture: "https://picsum.photos/seed/apt2/200/120",
   },
   {
@@ -137,7 +137,7 @@ export const houseRentalList = [
     rent: 850,
     extraAdult: 100,
     desc: "Residential",
-    status: "Under Remodel",
+    status: "Available",
     picture: "https://picsum.photos/seed/house2/200/120",
   },
   {
@@ -146,7 +146,7 @@ export const houseRentalList = [
     rent: 950,
     extraAdult: 100,
     desc: "2 bedroom, to bath",
-    status: "Available",
+    status: "Rented",
     picture: "https://picsum.photos/seed/house3/200/120",
   },
   {
