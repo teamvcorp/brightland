@@ -57,12 +57,12 @@ export const resRentalList = [
   {
     name: "Apt 6",
     type: "residential",
-    Sqft: 500,
+    Sqft: 750,
     desc: "2 Bedroom 1 bath",
     rent: 850,
     extraAdult: 100,
     ammenities: "Apartment includes Highspeed internet, onsite laundry, water and sewer",
-    status: "Rented",
+    status: "Available",
     picture: "https://picsum.photos/seed/apt6/200/120",
   },
   {
