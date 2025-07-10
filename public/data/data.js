@@ -137,7 +137,7 @@ export const houseRentalList = [
     rent: 850,
     extraAdult: 100,
     desc: "Residential",
-    status: "Available",
+    status: "Rented",
     picture: "https://picsum.photos/seed/house2/200/120",
   },
   {
