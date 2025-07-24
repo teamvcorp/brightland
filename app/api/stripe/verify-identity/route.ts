@@ -8,6 +8,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 export async function POST(req: Request) {
+  console.log('Processing identity verification request');
   const { email, documentType } = await req.json();
 
   if (!email || !documentType) {
