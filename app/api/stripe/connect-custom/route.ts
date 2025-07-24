@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { connectToDatabase } from '../../../lib/mongodb';
-import { User } from '../../../models/User';
+import { UserModel as User } from '../../../models/User';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2020-08-27',
+  apiVersion: '2025-06-30.basil',
 });
 
 export async function POST(req: Request) {

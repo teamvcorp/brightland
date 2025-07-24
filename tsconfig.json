@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "typeRoots": ["./types", "./node_modules/@types"],
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
@@ -22,9 +23,10 @@
         "name": "next"
       }
     ]
+    
   },
   "include": [
-    "next-auth.d.ts",
+    "app/types/next-auth.d.ts",
     "next-env.d.ts",
     ".next/types/**/*.ts",
     "**/*.ts",
