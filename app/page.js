@@ -1,7 +1,8 @@
 import Image from "next/image";
-import Dropdown from "@/components/Dropdown";
+import Dropdown from "../app/components/Dropdown";
 
-import { FaHome, FaPhone } from "react-icons/fa";
+import { FaHome, FaPhone, FaTools } from "react-icons/fa";
+import { FaBuildingUser } from "react-icons/fa6";
 import Link from "next/link";
 
 export default function Home() {
@@ -10,9 +11,9 @@ export default function Home() {
   {/* Welcome Section */}
   <section className="max-w-7xl mx-auto p-6 flex flex-col md:flex-row items-center gap-8">
     <div className="flex-1 space-y-4">
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Welcome to Brightland Apartments on Lake Avenue.</h1>
-      <h2 className="text-xl md:text-2xl text-gray-700">Discover Your Ideal Home in the Heart of Storm Lake!</h2>
-      <p className="text-gray-600">
+      <h1 className="text-3xl md:text-4xl font-bold text-gray-800">Welcome to Brightland Apartments on Lake Avenue</h1>
+      <h2 className="text-2xl md:text-2xl text-gray-700">Discover Your Ideal Home in the Heart of Storm Lake!</h2>
+      <p className="text-lg font-light text-gray-600">
         Are you ready to embrace a unique blend of urban convenience and
         serene lakeside living? Look no further! Our quaint apartment
         building in Storm Lake offers the perfect balance of comfort,
@@ -39,19 +40,19 @@ export default function Home() {
   {/* Navigation Section */}
   <section className="py-6 bg-white shadow">
   <div className="grid grid-cols-2 gap-4 md:flex md:justify-around max-w-md md:max-w-full mx-auto text-center pb-5">
-    <Link href="/rentals" className="flex flex-col items-center gap-2">
+    <Link href="/rentals" className="flex flex-col items-center gap-2 hover:scale-105 transition-transform duration-300">
       <FaHome size={50} color="#54738e" />
       <h1 className="text-lg font-semibold">Rentals</h1>
     </Link>
-    <Link href="/managers" className="flex flex-col items-center gap-2">
-      <FaHome size={50} color="#54738e" />
+    <Link href="/managers" className="flex flex-col items-center gap-2 hover:scale-105 transition-transform duration-300">
+      <FaBuildingUser size={50} color="#54738e" />
       <h1 className="text-lg font-semibold">Property Managers</h1>
     </Link>
-    <Link href="/owners" className="flex flex-col items-center gap-2">
-      <FaHome size={50} color="#54738e" />
-      <h1 className="text-lg font-semibold">Home Owners</h1>
+    <Link href="/owners" className="flex flex-col items-center gap-2 hover:scale-105 transition-transform duration-300">
+      <FaTools size={50} color="#54738e" />
+      <h1 className="text-lg font-semibold">Home Repairs</h1>
     </Link>
-    <Link href="/contact" className="flex flex-col items-center gap-2">
+    <Link href="/contact" className="flex flex-col items-center gap-2 hover:scale-105 transition-transform duration-300">
       <FaPhone size={50} color="#54738e" />
       <h1 className="text-lg font-semibold">Contact</h1>
     </Link>

@@ -1,9 +1,10 @@
 import { Inter } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
-import Image from "next/image";
-
+import ClientProvider from "./ClientProvider";
 const inter = Inter({ subsets: ["latin"] });
+import Header from "./components/Header";
+
 
 export const metadata = {
   title: "Brightland Rentals",
@@ -14,18 +15,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={inter.className}>
-        <header>
-          <Link href="/">
-            <img className="logo" src="/Logo3Sun.gif" alt="Bright Land Logo" />
-          </Link>
-          <div className="headerBtnContainer">
-            <Link href="/license" ><button className="payBtn btn">Apply Now</button></Link>
-            <Link href="/contact">
-              <button className="scheduleBtn btn">Contact Us</button>
-            </Link>
-          </div>
-        </header>
-        {children}
+        <ClientProvider>
+          <Header />
+          {children}
+        </ClientProvider>
         <footer>
           <div> &copy;Bright Land Apartments 2023 </div>
           <div>Site By: TeamVCorp.</div>

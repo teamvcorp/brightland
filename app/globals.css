@@ -123,30 +123,39 @@ p {
 /* BUTTONS/NAV */
 /* buttons */
 button {
-  background-color: transparent;
+  
   border: none;
+  
+}
+
+button:hover {
+transform: scale(1.05);
+
+
+
 }
 .btn {
   box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
-  width: 5.5rem;
-  height: 1.5rem;
+  width: 10rem;
+  height: 2rem;
   border-radius: 5px;
   color: white;
   font-weight: var(--regular);
-  font-size: 0.55rem;
+  font-size: .75rem;
+  text-transform: uppercase;
 }
 .payBtn {
-  background-color: var(--yellow);
+  background-color: var(--darkGreen);
 }
 .scheduleBtn {
   background-color: var(--blue);
 }
-.btn:hover {
+/* .btn:hover {
   transform: scale(1.05);
   box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px,
     rgba(0, 0, 0, 0.3) 0px 30px 60px -30px,
     rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
-}
+} */
 /* navigation */
 .headerNav:hover {
   text-shadow: 2px 4px 3px rgba(0, 0, 0, 0.3);
@@ -165,12 +174,14 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding-left: 5rem;
+  
 
   
  
 }
 .headerNavContainer {
-  /* width: 80%; */
+
   display: flex;
   justify-content: space-around;
 }
@@ -181,6 +192,7 @@ header {
   display: flex;
   flex-direction: column;
   grid-gap: .5rem;
+  margin-right: 5rem;
 }
 
 /* MAIN */
