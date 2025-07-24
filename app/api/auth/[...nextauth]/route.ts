@@ -10,7 +10,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-06-30.basil',
 });
 
-export const authOptions: NextAuthOptions = {
+ const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID!,
