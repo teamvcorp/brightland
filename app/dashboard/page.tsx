@@ -66,11 +66,85 @@ export default function DashboardPage() {
   };
 
   const handleVerifyIdentity = async () => {
-    // ... (keep as is)
+   if (!documentType) {
+      setError('Please select a document type');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/stripe/verify-identity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: session?.user?.email, documentType }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to initiate verification');
+      }
+
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error('Stripe.js failed to load');
+      }
+
+      const { error: verificationError } = await stripe.verifyIdentity(data.clientSecret);
+
+      if (verificationError) {
+        throw new Error(verificationError.message);
+      }
+
+      await update(); // Refresh session
+      router.refresh(); // Refresh page
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleProcessPayment = async () => {
-    // ... (keep as is)
+   setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/stripe/process-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 10000 }), // Example: $100.00
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Payment processing failed');
+      }
+
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error('Stripe.js failed to load');
+      }
+
+      const { error: stripeError } = await stripe.confirmCardPayment(data.clientSecret, {
+        payment_method: {
+          card: { token: 'tok_visa' }, // Use test token for testing
+        },
+      });
+
+      if (stripeError) {
+        throw new Error(stripeError.message);
+      }
+
+      alert(`Payment processed: ${data.paymentIntentId}`);
+    } catch (err: any) {
+      setError(err.message || 'Payment processing failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (status === 'loading') {
