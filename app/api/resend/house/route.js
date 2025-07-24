@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { render } from "@react-email/render";
-import { ContactEmailHome } from "@/app/email/ContactEmailHome";
+import { ContactEmailHome } from "@/email/ContactEmailHome";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation"; // Import useRouter for navigation
-import { resRentalList, commRentalList, houseRentalList } from "@/public/data/data";
+import { resRentalList, commRentalList, houseRentalList } from "@/data/data";
 
 // Reusable modal component for enlarged image
 const ImageModal = ({ isOpen, imageSrc, onClose }) => {

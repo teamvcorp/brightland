@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { render } from "@react-email/render";
-import { LicenseEmail } from "@/app/email/licenseEmail";
+import { LicenseEmail } from "@/email/licenseEmail";
 import PDFParser from "pdf2json";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
