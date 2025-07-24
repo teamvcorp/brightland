@@ -21,4 +21,5 @@ export interface User extends Document {
   createdAt: Date;
   updatedAt: Date;
   current40Percent: number;
+  role?: string;  // Optional role field
 }

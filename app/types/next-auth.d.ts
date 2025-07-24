@@ -8,6 +8,7 @@ declare module "next-auth" {
       isVerified?: boolean;
       identityVerificationStatus?: string;
       stripeCustomerId?: string;
+      role?: string;  // Optional role field
     } & DefaultSession["user"];
   }
 
@@ -16,6 +17,7 @@ declare module "next-auth" {
     isVerified?: boolean;
     identityVerificationStatus?: string;
     stripeCustomerId?: string;
+    role?: string;  // Optional role field
   }
 }
 
@@ -25,5 +27,6 @@ declare module "next-auth/jwt" {
     isVerified?: boolean;
     identityVerificationStatus?: string;
     stripeCustomerId?: string;
+    role?: string;  // Optional role field
   }
 }
