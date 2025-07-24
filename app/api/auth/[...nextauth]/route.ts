@@ -72,8 +72,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       // Create Stripe Customer if not exists
       if (!dbUser.stripeCustomerId) {
         const customer = await stripe.customers.create({
-          email: user.email,
-          name: user.name,
+          email: user.email as string,
+          name: user.name as string,
         });
         dbUser.stripeCustomerId = customer.id;
         await dbUser.save();
