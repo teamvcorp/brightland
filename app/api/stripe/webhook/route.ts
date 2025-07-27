@@ -13,7 +13,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.text();
     const sig = req.headers.get('stripe-signature')!;
-
     let event: Stripe.Event;
 
     try {
@@ -26,11 +25,13 @@ export async function POST(req: Request) {
     await connectToDatabase();
 
     switch (event.type) {
-      case 'identity.verification_session.created':
+      // ========== Identity verification ==========
+      case 'identity.verification_session.created': {
         const createdSession = event.data.object as Stripe.Identity.VerificationSession;
         console.log(`Verification session created for: ${createdSession.metadata?.email}`);
         break;
-      case 'identity.verification_session.verified':
+      }
+      case 'identity.verification_session.verified': {
         const verifiedSession = event.data.object as Stripe.Identity.VerificationSession;
         await UserModel.updateOne(
           { email: verifiedSession.metadata?.email },
@@ -38,7 +39,8 @@ export async function POST(req: Request) {
         );
         console.log(`User verified: ${verifiedSession.metadata?.email}`);
         break;
-      case 'identity.verification_session.requires_input':
+      }
+      case 'identity.verification_session.requires_input': {
         const failedSession = event.data.object as Stripe.Identity.VerificationSession;
         await UserModel.updateOne(
           { email: failedSession.metadata?.email },
@@ -46,6 +48,41 @@ export async function POST(req: Request) {
         );
         console.log(`Verification failed for: ${failedSession.metadata?.email}`);
         break;
+      }
+
+      // ========== Default payment method sync ==========
+      case 'customer.updated': {
+        const customer = event.data.object as Stripe.Customer;
+        if (typeof customer.email === 'string') {
+          await UserModel.updateOne(
+            { email: customer.email },
+            { defaultPaymentMethod: customer.invoice_settings?.default_payment_method || null }
+          );
+          console.log(`Synced default payment method for ${customer.email}`);
+        }
+        break;
+      }
+
+      case 'setup_intent.succeeded': {
+        const intent = event.data.object as Stripe.SetupIntent;
+        const customerId = intent.customer;
+        const paymentMethodId = intent.payment_method;
+
+        if (typeof customerId === 'string' && typeof paymentMethodId === 'string') {
+          const customer = await stripe.customers.retrieve(customerId);
+          const email = (customer as Stripe.Customer).email;
+
+          if (email) {
+            await UserModel.updateOne(
+              { email },
+              { defaultPaymentMethod: paymentMethodId }
+            );
+            console.log(`Updated default payment method for ${email}`);
+          }
+        }
+        break;
+      }
+
       default:
         console.log(`Unhandled event type ${event.type}`);
     }

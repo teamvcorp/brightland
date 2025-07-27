@@ -16,6 +16,7 @@ declare module "next-auth" {
     id: string;
     isVerified?: boolean;
     identityVerificationStatus?: string;
+    defaultPaymentMethod?: string; // Optional field for default payment method
     stripeCustomerId?: string;
     role?: string;  // Optional role field
   }

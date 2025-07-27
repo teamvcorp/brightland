@@ -40,7 +40,10 @@ export async function POST(req: Request) {
 
     await UserModel.updateOne(
       { email },
-      { identityVerificationStatus: verificationSession.status, isVerified: verificationSession.status === 'true' }
+      { 
+      identityVerificationStatus: verificationSession.status,
+      isVerified: verificationSession.status === 'verified'
+      }
     );
 
     return NextResponse.json({ clientSecret: verificationSession.client_secret }, { status: 200 });

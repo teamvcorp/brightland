@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-06-30.basil',
 });
 
-const PRESET_MIN = 10; // Example preset min value
+let PRESET_MIN = 10; // This is runtime memory only — won't persist in DB
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -25,18 +25,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
 
-    // Fetch recent PaymentIntents for the customer
     const paymentIntents = await stripe.paymentIntents.list({
       customer: user.stripeCustomerId,
-      limit: 1, // Get the most recent
+      limit: 1,
     });
 
     if (paymentIntents.data.length === 0) {
       return NextResponse.json({ message: 'No recent deposits found' }, { status: 404 });
     }
 
-    const recentAmount = paymentIntents.data[0].amount / 100; // Convert cents to dollars
+    const recentAmount = paymentIntents.data[0].amount / 100;
     const new40Percent = recentAmount * 0.4;
+
+    // ✅ Update PRESET_MIN if new40Percent is greater
+    if (new40Percent > PRESET_MIN) {
+      PRESET_MIN = new40Percent;
+    }
 
     if (new40Percent < PRESET_MIN) {
       return NextResponse.json({ message: 'Update below minimum threshold' }, { status: 400 });
@@ -47,7 +51,7 @@ export async function POST(req: Request) {
       { current40Percent: new40Percent }
     );
 
-    return NextResponse.json({ new40Percent }, { status: 200 });
+    return NextResponse.json({ new40Percent, updatedPresetMin: PRESET_MIN }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ message: err.message }, { status: 500 });
   }

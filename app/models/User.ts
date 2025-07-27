@@ -14,12 +14,22 @@ const userSchema = new Schema<User>({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String },
-  role: { type: String, default : 'user' }, // Default role is 'user'
+  role: { type: String, default: 'user' }, // Default role is 'user'
   isVerified: { type: Boolean, default: false },
   identityVerificationStatus: { type: String, enum: ['pending', 'verified', 'failed'], default: 'pending' },
   payments: [paymentSchema],
   stripeCustomerId: { type: String, unique: true, sparse: true },
   current40Percent: { type: Number, default: 0 },
+  defaultPaymentMethod: { type: String, default: null },
+
+  // ✅ New address field
+  address: {
+    street: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    zip: { type: String, default: '' },
+  },
 }, { timestamps: true });
+
 
 export const UserModel = models.User || model<User>('User', userSchema);

@@ -16,10 +16,19 @@ export interface User extends Document {
   password?: string;
   isVerified: boolean;
   identityVerificationStatus: 'pending' | 'verified' | 'failed';
-  stripeCustomerId?: string;  // Added here for Stripe Customer ID
+  defaultPaymentMethod?: string; // Optional field for default payment method
+  stripeCustomerId?: string;
   payments: Payment[];
   createdAt: Date;
   updatedAt: Date;
   current40Percent: number;
-  role?: string;  // Optional role field
+  role?: string;
+
+  // ✅ New address field
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
 }

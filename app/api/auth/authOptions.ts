@@ -46,6 +46,7 @@ const authOptions: NextAuthOptions = {
           isVerified: user.isVerified,
           identityVerificationStatus: user.identityVerificationStatus,
           stripeCustomerId: user.stripeCustomerId,
+          shouldRefreshSession: true,
         };
       },
     }),
@@ -82,7 +83,12 @@ const authOptions: NextAuthOptions = {
         token.isVerified = user.isVerified;
         token.identityVerificationStatus = user.identityVerificationStatus;
         token.stripeCustomerId = user.stripeCustomerId;
+
       }
+      if ((user as any)?.shouldRefreshSession) {
+        token.updatedAt = Date.now();
+      }
+
       return token;
     },
     async session({ session, token }) {
