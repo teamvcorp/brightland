@@ -116,6 +116,7 @@ const ListingTable = ({ title, listings, showExtraAdult = true }) => (
         </thead>
         <tbody>
           {listings.map((listing, idx) => (
+            listing.status === "Rented" ? null :
             <ListingRow key={listing.id || idx} listing={listing} showExtraAdult={showExtraAdult} />
           ))}
         </tbody>
