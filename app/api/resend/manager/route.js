@@ -2,6 +2,8 @@ import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { render } from "@react-email/render";
 import { ContactEmailManager } from "@/email/ContactEmailManager";
+import { connectToDatabase } from '@/lib/mongodb';
+import { ManagerRequestModel } from '@/models/ManagerRequest';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -11,7 +13,9 @@ export async function POST(request) {
   }
 
   try {
-    const { fullname, email, phone, address, projectDescription, message } = await request.json();
+    await connectToDatabase();
+    
+    const { fullname, email, phone, address, projectDescription, message, problemImageUrl } = await request.json();
 
     if (!fullname || !email || !phone || !address || !projectDescription || !message) {
       return NextResponse.json(
@@ -45,10 +49,22 @@ export async function POST(request) {
       );
     }
 
+    // Save the request to the database
+    const managerRequest = await ManagerRequestModel.create({
+      fullname,
+      email,
+      phone,
+      address,
+      projectDescription,
+      message,
+      problemImageUrl,
+      status: 'pending'
+    });
+
     // Render the email template
     let emailHtml;
     try {
-      emailHtml = await render(
+        emailHtml = await render(
         <ContactEmailManager
           fullname={fullname}
           email={email}
@@ -56,11 +72,10 @@ export async function POST(request) {
           address={address}
           projectDescription={projectDescription}
           message={message}
+          problemImageUrl={problemImageUrl}
         />,
         { pretty: true } // Formats HTML for better readability
-      );
-
-      // Validate that emailHtml is a string
+      );      // Validate that emailHtml is a string
       if (typeof emailHtml !== "string" || emailHtml.trim() === "") {
         console.error("Invalid emailHtml:", emailHtml);
         return NextResponse.json(
@@ -96,7 +111,7 @@ export async function POST(request) {
     }
 
     return NextResponse.json(
-      { message: "Email sent successfully", data },
+      { message: "Request submitted successfully", requestId: managerRequest._id, data },
       { status: 200 }
     );
   } catch (error) {

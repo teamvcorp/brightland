@@ -1,6 +1,6 @@
 import { Html, Head, Body, Container, Section, Heading, Text } from "@react-email/components";
 
-export const ContactEmailManager = ({ fullname, email, phone, address, projectDescription, message }) => (
+export const ContactEmailManager = ({ fullname, email, phone, address, projectDescription, message, problemImageUrl }) => (
   <Html>
     <Head />
     <Body style={{ fontFamily: "Arial, sans-serif", color: "#333" }}>
@@ -17,6 +17,16 @@ export const ContactEmailManager = ({ fullname, email, phone, address, projectDe
           <Text><strong>Address:</strong> {address}</Text>
           <Text><strong>Project Description:</strong> {projectDescription}</Text>
           <Text><strong>Message:</strong> {message}</Text>
+          {problemImageUrl && (
+            <>
+              <Text><strong>Problem Image:</strong></Text>
+              <img 
+                src={problemImageUrl} 
+                alt="Problem reported by tenant" 
+                style={{ maxWidth: "400px", height: "auto", border: "1px solid #ddd", borderRadius: "5px" }}
+              />
+            </>
+          )}
         </Section>
         <Text style={{ textAlign: "center", fontSize: "12px", color: "#777", marginTop: "20px" }}>
           Sent from Your Website Contact Form

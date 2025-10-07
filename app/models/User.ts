@@ -14,7 +14,7 @@ const userSchema = new Schema<User>({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String },
-  role: { type: String, default: 'user' }, // Default role is 'user'
+  role: { type: String, enum: ['user', 'admin'], default: 'user' }, // Updated role with admin option
   isVerified: { type: Boolean, default: false },
   identityVerificationStatus: { type: String, enum: ['pending', 'verified', 'failed'], default: 'pending' },
   payments: [paymentSchema],
