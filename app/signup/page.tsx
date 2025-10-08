@@ -55,8 +55,13 @@ export default function SignUpPage() {
         const response = await fetch('/api/property-owners');
         if (response.ok) {
           const data = await response.json();
-          // Handle the nested structure from the API
-          setPropertyOwners(data.propertyOwners || []);
+          // Ensure data is an array before setting it
+          if (Array.isArray(data)) {
+            setPropertyOwners(data);
+          } else {
+            console.error('Property owners data is not an array:', data);
+            setPropertyOwners([]);
+          }
         } else {
           console.error('Failed to load property owners');
           setPropertyOwners([]);

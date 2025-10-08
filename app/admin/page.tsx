@@ -792,7 +792,13 @@ export default function AdminPage() {
       const response = await fetch('/api/property-owners');
       if (response.ok) {
         const data = await response.json();
-        setPropertyOwners(data.propertyOwners || []);
+        // Ensure data is an array before setting it
+        if (Array.isArray(data)) {
+          setPropertyOwners(data);
+        } else {
+          console.error('Property owners data is not an array:', data);
+          setPropertyOwners([]);
+        }
       }
     } catch (error) {
       console.error('Error fetching property owners:', error);
