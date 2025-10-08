@@ -167,7 +167,7 @@ export default function ContactUsPropertyOwner() {
           });
           setProblemImage(null);
           setProblemImagePreview(null);
-          setTimeout(() => router.push("/"), 3000);
+          setTimeout(() => router.push("/property-owner-dashboard"), 3000);
         } else {
           const errorData = await res.json();
           setSubmitStatus(errorData.error || "Failed to send message");

@@ -137,6 +137,24 @@ const authOptions: NextAuthOptions = {
       }
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      // If url is a relative URL, prepend baseUrl
+      if (url.startsWith("/")) {
+        url = `${baseUrl}${url}`;
+      }
+      
+      // Parse URL to get search params
+      const urlObj = new URL(url);
+      const callbackUrl = urlObj.searchParams.get('callbackUrl') || baseUrl;
+      
+      // If no specific callback URL, redirect based on user type
+      if (callbackUrl === baseUrl || callbackUrl === `${baseUrl}/`) {
+        // This will be handled by the frontend after session is loaded
+        return baseUrl;
+      }
+      
+      return callbackUrl;
+    },
   },
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
