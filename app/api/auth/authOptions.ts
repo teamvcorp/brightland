@@ -68,7 +68,8 @@ const authOptions: NextAuthOptions = {
           identityVerificationStatus: 'pending',
         });
       }
-      if (!dbUser.stripeCustomerId) {
+      // Only create Stripe customers for tenants, not property owners
+      if (!dbUser.stripeCustomerId && dbUser.userType === 'tenant') {
         const customer = await stripe.customers.create({
           email: user.email as string,
           name: user.name as string,
