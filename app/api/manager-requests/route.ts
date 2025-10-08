@@ -30,33 +30,11 @@ export async function GET() {
       query = {};
       console.log('Admin user - showing all requests');
     } 
-    // Property owners see only requests for their properties
+    // Property owners see only requests submitted by them (by email)
     else if (session.user.userType === 'property-owner') {
-      // Find the property owner and get their property addresses
-      const propertyOwner = await PropertyOwnerModel.findOne({ 
-        email: session.user.email 
-      }).lean().exec() as PropertyOwner | null;
-      
-      if (propertyOwner && propertyOwner.properties) {
-        // Get all property addresses owned by this property owner
-        const propertyAddresses = propertyOwner.properties.map(prop => {
-          const fullAddress = `${prop.address.street}, ${prop.address.city}, ${prop.address.state} ${prop.address.zip}`;
-          return fullAddress.trim();
-        });
-        
-        console.log('Property owner properties:', propertyAddresses);
-        
-        // Filter requests by property addresses owned by this property owner
-        query = { 
-          address: { $in: propertyAddresses }
-        };
-        
-        console.log('Property owner query:', query);
-      } else {
-        // Property owner not found or has no properties - return empty result
-        console.log('Property owner not found or has no properties');
-        query = { _id: { $in: [] } }; // Empty result
-      }
+      // Simple email-based filtering - property owners see requests they submitted
+      query = { email: session.user.email };
+      console.log('Property owner filtering by email:', session.user.email);
     }
     // Regular tenants see only their own requests
     else {
