@@ -78,6 +78,29 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
+    // Parse address if it's a string
+    let addressObj;
+    if (typeof address === 'string') {
+      // Try to parse a string address like "123 Main St, City, State 12345"
+      const addressParts = address.split(',').map((part: string) => part.trim());
+      addressObj = {
+        street: addressParts[0] || '',
+        city: addressParts[1] || '',
+        state: addressParts[2]?.split(' ')[0] || '',
+        zip: addressParts[2]?.split(' ')[1] || '',
+      };
+    } else {
+      addressObj = address;
+    }
+
+    // Ensure amenities is a string
+    let amenitiesString;
+    if (Array.isArray(amenities)) {
+      amenitiesString = amenities.join(', ');
+    } else {
+      amenitiesString = amenities || '';
+    }
+
     // Add property to the specified property owner's embedded properties array
     const result = await PropertyOwnerModel.findOneAndUpdate(
       { name: propertyOwnerName },
@@ -90,10 +113,10 @@ export async function POST(req: Request) {
             description,
             rent,
             extraAdult: extraAdult || 0,
-            amenities,
+            amenities: amenitiesString,
             status: status || 'available',
             picture,
-            address,
+            address: addressObj,
           }
         }
       },
@@ -128,7 +151,19 @@ export async function PUT(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     
+    console.log('PUT /api/properties - Session check:', {
+      sessionExists: !!session,
+      userEmail: session?.user?.email,
+      userRole: session?.user?.role,
+      userType: session?.user?.userType
+    });
+    
     if (!session || session.user.role !== 'admin') {
+      console.log('PUT /api/properties - Unauthorized:', {
+        hasSession: !!session,
+        userRole: session?.user?.role,
+        requiredRole: 'admin'
+      });
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -143,6 +178,29 @@ export async function PUT(req: Request) {
 
     await connectToDatabase();
 
+    // Parse address if it's a string
+    let addressObj;
+    if (typeof propertyData.address === 'string') {
+      // Try to parse a string address like "123 Main St, City, State 12345"
+      const addressParts = propertyData.address.split(',').map((part: string) => part.trim());
+      addressObj = {
+        street: addressParts[0] || '',
+        city: addressParts[1] || '',
+        state: addressParts[2]?.split(' ')[0] || '',
+        zip: addressParts[2]?.split(' ')[1] || '',
+      };
+    } else {
+      addressObj = propertyData.address;
+    }
+
+    // Ensure amenities is a string
+    let amenitiesString;
+    if (Array.isArray(propertyData.amenities)) {
+      amenitiesString = propertyData.amenities.join(', ');
+    } else {
+      amenitiesString = propertyData.amenities || '';
+    }
+
     // Update the specific property within the property owner's embedded properties array
     const result = await PropertyOwnerModel.findOneAndUpdate(
       { 
@@ -151,19 +209,16 @@ export async function PUT(req: Request) {
       },
       {
         $set: {
-          'properties.$': {
-            _id: propertyId,
-            name: propertyData.name,
-            type: propertyData.type,
-            sqft: propertyData.sqft,
-            description: propertyData.description,
-            rent: propertyData.rent,
-            extraAdult: propertyData.extraAdult || 0,
-            amenities: propertyData.amenities,
-            status: propertyData.status || 'available',
-            picture: propertyData.picture,
-            address: propertyData.address,
-          }
+          'properties.$.name': propertyData.name,
+          'properties.$.type': propertyData.type,
+          'properties.$.sqft': propertyData.sqft,
+          'properties.$.description': propertyData.description,
+          'properties.$.rent': propertyData.rent,
+          'properties.$.extraAdult': propertyData.extraAdult || 0,
+          'properties.$.amenities': amenitiesString,
+          'properties.$.status': propertyData.status || 'available',
+          'properties.$.picture': propertyData.picture,
+          'properties.$.address': addressObj,
         }
       },
       { new: true }

@@ -64,10 +64,14 @@ const ListingRow = ({ listing, showExtraAdult = true }) => {
             className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
               listing.status === "available"
                 ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
+                : listing.status === "rented"
+                ? "bg-blue-100 text-blue-800"
+                : listing.status === "under-remodel"
+                ? "bg-purple-100 text-purple-800"
+                : "bg-yellow-100 text-yellow-800"
             }`}
           >
-            {listing.status}
+            {listing.status === "under-remodel" ? "Under Remodel" : listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}
           </span>
         </td>
         <td className="py-4 px-6 flex items-center space-x-2">

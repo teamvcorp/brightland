@@ -62,6 +62,7 @@ const authOptions: NextAuthOptions = {
         dbUser = await UserModel.create({
           name: user.name,
           email: user.email,
+          role: 'user', // Default role
           userType: 'tenant', // Default for OAuth users, they can change later
           isVerified: false,
           identityVerificationStatus: 'pending',
@@ -79,6 +80,7 @@ const authOptions: NextAuthOptions = {
       user.isVerified = dbUser.isVerified;
       user.identityVerificationStatus = dbUser.identityVerificationStatus;
       user.stripeCustomerId = dbUser.stripeCustomerId;
+      user.role = dbUser.role; // Add role to user object
       user.userType = dbUser.userType;
       user.selectedProperty = dbUser.selectedProperty;
       user.company = dbUser.company;
@@ -90,6 +92,7 @@ const authOptions: NextAuthOptions = {
         token.isVerified = user.isVerified;
         token.identityVerificationStatus = user.identityVerificationStatus;
         token.stripeCustomerId = user.stripeCustomerId;
+        token.role = user.role; // Add role to token
         token.userType = user.userType;
         token.selectedProperty = user.selectedProperty;
         token.company = user.company;
@@ -106,6 +109,7 @@ const authOptions: NextAuthOptions = {
         session.user.isVerified = token.isVerified as boolean;
         session.user.identityVerificationStatus = token.identityVerificationStatus as string;
         session.user.stripeCustomerId = token.stripeCustomerId as string;
+        session.user.role = token.role as string; // Add role to session
         session.user.userType = token.userType as string;
         session.user.selectedProperty = token.selectedProperty as string;
         session.user.company = token.company as string;

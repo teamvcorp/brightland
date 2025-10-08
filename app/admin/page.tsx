@@ -331,6 +331,17 @@ const PropertyForm = ({
   // Load form data when editing
   useEffect(() => {
     if (editingProperty) {
+      // Convert address object to string if needed
+      let addressString = '';
+      if (typeof editingProperty.address === 'object' && editingProperty.address) {
+        const addr = editingProperty.address;
+        addressString = `${addr.street || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zip || ''}`.trim();
+        // Clean up extra commas and spaces
+        addressString = addressString.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '');
+      } else {
+        addressString = editingProperty.address || '';
+      }
+
       setFormData({
         name: editingProperty.name || '',
         type: editingProperty.type || '',
@@ -344,7 +355,7 @@ const PropertyForm = ({
         status: editingProperty.status || 'available',
         picture: editingProperty.picture || '',
         propertyOwnerName: editingProperty.ownerName || '',
-        address: editingProperty.address || ''
+        address: addressString
       });
       setImagePreview(editingProperty.picture || '');
     } else {
@@ -628,7 +639,8 @@ const PropertyForm = ({
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="available">Available</option>
-              <option value="occupied">Occupied</option>
+              <option value="rented">Rented</option>
+              <option value="under-remodel">Under Remodel</option>
               <option value="maintenance">Maintenance</option>
             </select>
           </div>
@@ -1014,12 +1026,14 @@ export default function AdminPage() {
                           className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
                             property.status === "available"
                               ? "bg-green-100 text-green-800"
-                              : property.status === "occupied"
+                              : property.status === "rented"
                               ? "bg-blue-100 text-blue-800"
+                              : property.status === "under-remodel"
+                              ? "bg-purple-100 text-purple-800"
                               : "bg-yellow-100 text-yellow-800"
                           }`}
                         >
-                          {property.status}
+                          {property.status === "under-remodel" ? "Under Remodel" : property.status.charAt(0).toUpperCase() + property.status.slice(1)}
                         </span>
                       </td>
                       <td className="py-4 px-4">
