@@ -6,10 +6,20 @@ import { UserModel } from '@/models/User';
 import bcrypt from 'bcryptjs';
 import Stripe from 'stripe';
 
-// Set up Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-06-30.basil',
-});
+// Set up Stripe only if we have a valid key
+let stripe: Stripe | null = null;
+try {
+  if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY.length > 10) {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-06-30.basil',
+    });
+  } else {
+    console.warn('Stripe not initialized: Invalid or missing STRIPE_SECRET_KEY');
+  }
+} catch (error) {
+  console.error('Stripe initialization failed:', error);
+  stripe = null;
+}
 
 const authOptions: NextAuthOptions = {
   providers: [
@@ -68,14 +78,24 @@ const authOptions: NextAuthOptions = {
           identityVerificationStatus: 'pending',
         });
       }
-      // Only create Stripe customers for tenants, not property owners
-      if (!dbUser.stripeCustomerId && dbUser.userType === 'tenant') {
-        const customer = await stripe.customers.create({
-          email: user.email as string,
-          name: user.name as string,
-        });
-        dbUser.stripeCustomerId = customer.id;
-        await dbUser.save();
+      // Only create Stripe customers for tenants, NEVER for property owners
+      if (dbUser.userType === 'property-owner') {
+        console.log('Property owner login - skipping Stripe customer creation');
+        // Property owners should never have Stripe customers
+      } else if (!dbUser.stripeCustomerId && dbUser.userType === 'tenant' && stripe) {
+        console.log('Creating Stripe customer for tenant');
+        try {
+          const customer = await stripe.customers.create({
+            email: user.email as string,
+            name: user.name as string,
+          });
+          dbUser.stripeCustomerId = customer.id;
+          await dbUser.save();
+          console.log('Stripe customer created successfully for tenant');
+        } catch (stripeError) {
+          console.error('Failed to create Stripe customer for tenant:', stripeError);
+          // Continue without Stripe customer - don't block auth
+        }
       }
       user.id = dbUser._id.toString();
       user.isVerified = dbUser.isVerified;

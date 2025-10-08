@@ -17,6 +17,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
+  // Only allow tenants to access this endpoint
+  if (session.user?.userType !== 'tenant') {
+    return NextResponse.json({ message: 'This endpoint is only for tenants' }, { status: 403 });
+  }
+
   try {
     await connectToDatabase();
 

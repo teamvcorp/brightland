@@ -28,10 +28,14 @@ export default function DashboardPage() {
   });
   const router = useRouter();
 
-  // Redirect managers to their dashboard
+  // Redirect managers and property owners to their respective dashboards
   useEffect(() => {
     if (session?.user?.userType === 'manager') {
       router.push('/manager-dashboard');
+      return;
+    }
+    if (session?.user?.userType === 'property-owner') {
+      router.push('/property-owner-dashboard');
       return;
     }
   }, [session, router]);
