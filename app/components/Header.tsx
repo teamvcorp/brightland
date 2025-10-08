@@ -29,10 +29,10 @@ const Header = () => {
     return (
         <header>
             <Link href="/">
-                <Image 
-                    className="logo" 
-                    src="/Logo3Sun.gif" 
-                    alt="Bright Land Logo" 
+                <Image
+                    className="logo"
+                    src="/logoBPM.svg"
+                    alt="Bright Land Logo"
                     width={150}
                     height={75}
                 />

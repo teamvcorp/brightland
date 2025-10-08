@@ -1,16 +1,37 @@
 'use client';
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 
-export default function SignInPage() {
+function SignInForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
+  
+  // Get callback URL from search params
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (status === 'loading') return;
+    
+    if (session?.user) {
+      // User is already logged in, redirect them to the callback URL or dashboard
+      if (session.user.userType === 'property-owner') {
+        router.push('/property-owner-dashboard');
+      } else if (callbackUrl && callbackUrl !== '/dashboard') {
+        router.push(callbackUrl);
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  }, [session, status, router, callbackUrl]);
 
   const handleCredentialsSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,12 +43,18 @@ export default function SignInPage() {
         redirect: false,
         email,
         password,
+        callbackUrl: callbackUrl
       });
 
       if (result?.error) {
         setError(result.error);
-      } else {
-        router.push('/dashboard');
+      } else if (result?.ok) {
+        // Successful sign in - redirect to callback URL or dashboard
+        if (callbackUrl && callbackUrl !== '/dashboard') {
+          router.push(callbackUrl);
+        } else {
+          router.push('/dashboard');
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
@@ -38,7 +65,7 @@ export default function SignInPage() {
 
   const handleGoogleSignIn = async () => {
     try {
-      await signIn('google', { callbackUrl: '/dashboard' });
+      await signIn('google', { callbackUrl: callbackUrl });
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed');
     }
@@ -59,7 +86,10 @@ export default function SignInPage() {
             <h2 className="mt-8 text-2xl/9 font-bold tracking-tight text-gray-900">Sign in to your account</h2>
             <p className="mt-2 text-sm/6 text-gray-500">
               Not a member?{' '}
-              <a href="/signup" className="font-semibold text-indigo-600 hover:text-indigo-500">
+              <a 
+                href={`/signup${callbackUrl && callbackUrl !== '/dashboard' ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ''}`} 
+                className="font-semibold text-indigo-600 hover:text-indigo-500"
+              >
                 Sign up now
               </a>
             </p>
@@ -211,5 +241,13 @@ export default function SignInPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-full items-center justify-center">Loading...</div>}>
+      <SignInForm />
+    </Suspense>
   );
 }

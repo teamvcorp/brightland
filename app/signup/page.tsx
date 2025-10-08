@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import Image from 'next/image';
 
 const SignUpContent = () => {
@@ -21,9 +21,26 @@ const SignUpContent = () => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
   
   // Get callback URL from search params
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (status === 'loading') return;
+    
+    if (session?.user) {
+      // User is already logged in, redirect them to the callback URL or dashboard
+      if (session.user.userType === 'property-owner') {
+        router.push('/property-owner-dashboard');
+      } else if (callbackUrl && callbackUrl !== '/dashboard') {
+        router.push(callbackUrl);
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  }, [session, status, router, callbackUrl]);
 
   // Load all available properties and property owners on component mount
   useEffect(() => {
@@ -124,6 +141,14 @@ const SignUpContent = () => {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 409) {
+          // User already exists, redirect to signin with the same callback URL
+          setError(data.message || 'Account already exists. Redirecting to sign in...');
+          setTimeout(() => {
+            router.push(`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+          }, 2000);
+          return;
+        }
         throw new Error(data.message || 'Failed to create user');
       }
 
@@ -176,7 +201,7 @@ const SignUpContent = () => {
             <h2 className="mt-8 text-2xl/9 font-bold tracking-tight text-gray-900">Create your account</h2>
             <p className="mt-2 text-sm/6 text-gray-500">
               Already have an account?{' '}
-              <a href="/auth/signin" className="font-semibold text-indigo-600 hover:text-indigo-500">
+              <a href={`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`} className="font-semibold text-indigo-600 hover:text-indigo-500">
                 Sign in
               </a>
             </p>
