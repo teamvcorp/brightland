@@ -132,6 +132,8 @@ const SignUpContent = () => {
     setError('');
 
     try {
+      console.log('Starting signup process...');
+      
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -139,40 +141,62 @@ const SignUpContent = () => {
       });
 
       const data = await response.json();
+      console.log('Signup API response:', { status: response.status, data });
 
       if (!response.ok) {
         if (response.status === 409) {
           // User already exists, redirect to signin with the same callback URL
           setError(data.message || 'Account already exists. Redirecting to sign in...');
           setTimeout(() => {
-            router.push(`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+            const signinUrl = `/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+            console.log('Redirecting to:', signinUrl);
+            router.push(signinUrl);
           }, 2000);
           return;
         }
         throw new Error(data.message || 'Failed to create user');
       }
 
+      console.log('User created successfully, attempting sign in...');
+
+      // Attempt to sign in
       const result = await signIn('credentials', {
         redirect: false,
         email: formData.email,
         password: formData.password,
+        callbackUrl: callbackUrl
       });
 
+      console.log('Sign in result:', result);
+
       if (result?.error) {
-        throw new Error(result.error);
+        console.error('Sign in error:', result.error);
+        throw new Error('Account created but failed to sign in automatically. Please try signing in manually.');
       }
 
-      // Route based on user type and callback URL
-      if (formData.userType === 'property-owner') {
-        router.push('/property-owner-dashboard');
-      } else if (callbackUrl && callbackUrl !== '/dashboard') {
-        // If there's a specific callback URL (like rental application), use it
-        router.push(callbackUrl);
-      } else {
-        router.push('/dashboard');
+      if (result?.ok) {
+        console.log('Sign in successful, redirecting...');
+        
+        // Show success message before redirect
+        setError('Account created successfully! Redirecting...');
+        
+        // Small delay to show success message
+        setTimeout(() => {
+          // Route based on user type and callback URL
+          if (formData.userType === 'property-owner') {
+            router.push('/property-owner-dashboard');
+          } else if (callbackUrl && callbackUrl !== '/dashboard') {
+            // If there's a specific callback URL (like rental application), use it
+            console.log('Redirecting to callback URL:', callbackUrl);
+            router.push(callbackUrl);
+          } else {
+            router.push('/dashboard');
+          }
+        }, 1000);
       }
     } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+      console.error('Signup error:', err);
+      setError(err.message || 'Something went wrong during signup');
     } finally {
       setLoading(false);
     }
@@ -390,15 +414,28 @@ const SignUpContent = () => {
                   </div>
                 )}
 
-                {error && <p className="text-red-500 text-sm/6">{error}</p>}
+                {error && (
+                  <div className={`p-3 rounded-md text-sm/6 ${
+                    error.includes('successfully') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                  }`}>
+                    {error}
+                  </div>
+                )}
 
                 <div>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm/6 font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:bg-indigo-300"
+                    className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm/6 font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:bg-indigo-300 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'Processing...' : 'Sign up'}
+                    {loading ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Creating account...
+                      </div>
+                    ) : (
+                      'Sign up'
+                    )}
                   </button>
                 </div>
               </form>

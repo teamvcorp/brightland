@@ -14,18 +14,52 @@ const RentalApplicationSuccessContent = () => {
     const name = searchParams.get('listingName') || '';
     const paymentIntent = searchParams.get('paymentIntent') || '';
     const appId = searchParams.get('applicationId') || '';
+    const sessionId = searchParams.get('session_id') || '';
     
     setListingName(name);
-    setPaymentIntentId(paymentIntent);
     setApplicationId(appId);
 
-    // If we have payment intent, confirm the payment
-    if (paymentIntent && appId) {
+    // Handle different payment confirmation methods
+    if (sessionId) {
+      // Stripe Checkout success
+      confirmCheckoutSession(sessionId, appId);
+    } else if (paymentIntent && appId) {
+      // Payment Intent confirmation
+      setPaymentIntentId(paymentIntent);
       confirmPayment(paymentIntent, appId);
     } else {
       setPaymentStatus('completed');
     }
   }, [searchParams]);
+
+  const confirmCheckoutSession = async (sessionId: string, applicationId: string) => {
+    try {
+      console.log('Confirming checkout session:', { sessionId, applicationId });
+      
+      const response = await fetch('/api/stripe/confirm-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          applicationId,
+        }),
+      });
+
+      if (response.ok) {
+        console.log('Checkout session confirmed successfully');
+        setPaymentStatus('completed');
+      } else {
+        const error = await response.json();
+        console.error('Checkout session confirmation failed:', error);
+        setPaymentStatus('failed');
+      }
+    } catch (error) {
+      console.error('Error confirming checkout session:', error);
+      setPaymentStatus('failed');
+    }
+  };
 
   const confirmPayment = async (paymentIntentId: string, applicationId: string) => {
     try {

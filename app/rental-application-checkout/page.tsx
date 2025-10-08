@@ -47,14 +47,37 @@ const CheckoutContent = () => {
     setError('');
     
     try {
+      // Since we have a payment intent client secret, we need to create a checkout session
+      // or use Stripe Elements. For now, let's redirect to a working payment flow
+      
+      // Create a checkout session instead of using payment intent
+      const checkoutResponse = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: 2500,
+          listingName: applicationData.listingName,
+          applicationId: applicationData.applicationId,
+          userEmail: session?.user?.email,
+        }),
+      });
+
+      if (!checkoutResponse.ok) {
+        throw new Error('Failed to create checkout session');
+      }
+
+      const { sessionId } = await checkoutResponse.json();
+
       const stripe = await stripePromise;
       if (!stripe) {
         throw new Error('Stripe failed to load');
       }
 
-      // Redirect to Stripe Checkout
+      // Now redirect to Stripe Checkout with proper session ID
       const { error } = await stripe.redirectToCheckout({
-        sessionId: applicationData.clientSecret,
+        sessionId: sessionId,
       });
 
       if (error) {
@@ -162,31 +185,6 @@ const CheckoutContent = () => {
         )}
 
         <div className="space-y-6">
-          {/* Development/Testing Section */}
-          <div className="border-2 border-dashed border-yellow-300 bg-yellow-50 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-yellow-800 mb-3">
-              🚧 Development Mode
-            </h3>
-            <p className="text-yellow-700 mb-4">
-              This is a development environment. In production, you would be redirected to Stripe Checkout.
-            </p>
-            <div className="space-y-3">
-              <div className="text-sm text-yellow-600">
-                <p><strong>Environment:</strong> {process.env.NODE_ENV}</p>
-                <p><strong>Stripe Key:</strong> {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'Configured' : 'Missing'}</p>
-                <p><strong>Client Secret:</strong> {applicationData?.clientSecret ? 'Available' : 'Missing'}</p>
-              </div>
-              
-              <button
-                onClick={handleManualPayment}
-                disabled={loading}
-                className="w-full bg-yellow-600 text-white py-3 px-6 rounded-lg hover:bg-yellow-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Processing...' : 'Simulate Payment (Testing)'}
-              </button>
-            </div>
-          </div>
-
           {/* Production Payment Section */}
           <div className="border border-gray-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">

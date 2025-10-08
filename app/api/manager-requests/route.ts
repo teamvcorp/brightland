@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { ManagerRequestModel } from '@/models/ManagerRequest';
+import { PropertyOwnerModel, PropertyOwner } from '@/models/PropertyOwner';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/authOptions';
 
@@ -29,10 +30,38 @@ export async function GET() {
       query = {};
       console.log('Admin user - showing all requests');
     } 
-    // Property owners and tenants see only their own requests
+    // Property owners see only requests for their properties
+    else if (session.user.userType === 'property-owner') {
+      // Find the property owner and get their property addresses
+      const propertyOwner = await PropertyOwnerModel.findOne({ 
+        email: session.user.email 
+      }).lean().exec() as PropertyOwner | null;
+      
+      if (propertyOwner && propertyOwner.properties) {
+        // Get all property addresses owned by this property owner
+        const propertyAddresses = propertyOwner.properties.map(prop => {
+          const fullAddress = `${prop.address.street}, ${prop.address.city}, ${prop.address.state} ${prop.address.zip}`;
+          return fullAddress.trim();
+        });
+        
+        console.log('Property owner properties:', propertyAddresses);
+        
+        // Filter requests by property addresses owned by this property owner
+        query = { 
+          address: { $in: propertyAddresses }
+        };
+        
+        console.log('Property owner query:', query);
+      } else {
+        // Property owner not found or has no properties - return empty result
+        console.log('Property owner not found or has no properties');
+        query = { _id: { $in: [] } }; // Empty result
+      }
+    }
+    // Regular tenants see only their own requests
     else {
       query = { email: session.user.email };
-      console.log('Non-admin user - filtering by email:', session.user.email);
+      console.log('Tenant user - filtering by email:', session.user.email);
     }
     
     const requests = await ManagerRequestModel.find(query)
@@ -40,8 +69,12 @@ export async function GET() {
       .lean()
       .exec();
 
-    console.log('Found requests:', requests.length, 'with query:', query);
-    console.log('Request emails:', requests.map(r => r.email));
+    console.log('Found requests:', requests.length, 'with query:', JSON.stringify(query));
+    console.log('Request details:', requests.map(r => ({ 
+      email: r.email, 
+      address: r.address, 
+      description: r.projectDescription 
+    })));
 
     return NextResponse.json(requests);
   } catch (error: any) {
