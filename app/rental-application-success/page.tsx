@@ -6,11 +6,95 @@ import Link from 'next/link';
 const RentalApplicationSuccessContent = () => {
   const searchParams = useSearchParams();
   const [listingName, setListingName] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState('checking');
+  const [applicationId, setApplicationId] = useState('');
+  const [paymentIntentId, setPaymentIntentId] = useState('');
 
   useEffect(() => {
     const name = searchParams.get('listingName') || '';
+    const paymentIntent = searchParams.get('paymentIntent') || '';
+    const appId = searchParams.get('applicationId') || '';
+    
     setListingName(name);
+    setPaymentIntentId(paymentIntent);
+    setApplicationId(appId);
+
+    // If we have payment intent, confirm the payment
+    if (paymentIntent && appId) {
+      confirmPayment(paymentIntent, appId);
+    } else {
+      setPaymentStatus('completed');
+    }
   }, [searchParams]);
+
+  const confirmPayment = async (paymentIntentId: string, applicationId: string) => {
+    try {
+      console.log('Confirming payment:', { paymentIntentId, applicationId });
+      
+      const response = await fetch('/api/stripe/rental-application-payment', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paymentIntentId,
+          applicationId,
+        }),
+      });
+
+      if (response.ok) {
+        console.log('Payment confirmed successfully');
+        setPaymentStatus('completed');
+      } else {
+        const error = await response.json();
+        console.error('Payment confirmation failed:', error);
+        setPaymentStatus('failed');
+      }
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      setPaymentStatus('failed');
+    }
+  };
+
+  if (paymentStatus === 'checking') {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">
+            Confirming Your Payment...
+          </h1>
+          <p className="text-gray-600">
+            Please wait while we verify your payment and finalize your application.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (paymentStatus === 'failed') {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+          <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">
+            Payment Verification Failed
+          </h1>
+          <p className="text-xl text-gray-600 mb-6">
+            There was an issue confirming your payment. Please contact support.
+          </p>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p><strong>Payment Intent:</strong> {paymentIntentId}</p>
+            <p><strong>Application ID:</strong> {applicationId}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">

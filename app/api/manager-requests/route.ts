@@ -12,6 +12,13 @@ export async function GET() {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log('Manager requests API - Session user:', {
+      email: session.user.email,
+      name: session.user.name,
+      role: session.user.role,
+      userType: session.user.userType
+    });
+
     await connectToDatabase();
     
     // Fetch requests based on user type and role
@@ -20,16 +27,21 @@ export async function GET() {
     // Admins see all requests
     if (session.user.role === 'admin') {
       query = {};
+      console.log('Admin user - showing all requests');
     } 
     // Property owners and tenants see only their own requests
     else {
       query = { email: session.user.email };
+      console.log('Non-admin user - filtering by email:', session.user.email);
     }
     
     const requests = await ManagerRequestModel.find(query)
       .sort({ createdAt: -1 })
       .lean()
       .exec();
+
+    console.log('Found requests:', requests.length, 'with query:', query);
+    console.log('Request emails:', requests.map(r => r.email));
 
     return NextResponse.json(requests);
   } catch (error: any) {

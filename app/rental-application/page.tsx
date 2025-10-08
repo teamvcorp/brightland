@@ -113,6 +113,7 @@ const RentalApplicationContent = () => {
       }
 
       const applicationData = await applicationResponse.json();
+      console.log('Application submitted:', applicationData);
       
       // Then create payment intent
       const paymentResponse = await fetch('/api/stripe/rental-application-payment', {
@@ -133,14 +134,18 @@ const RentalApplicationContent = () => {
         throw new Error(errorData.error || 'Payment processing failed');
       }
 
-      const { clientSecret } = await paymentResponse.json();
+      const { clientSecret, paymentIntentId } = await paymentResponse.json();
+      console.log('Payment intent created:', { clientSecret: clientSecret ? 'exists' : 'missing', paymentIntentId });
       
-      // For simplicity, we'll redirect to success page
-      // In a real implementation, you'd integrate Stripe Elements here
-      alert('Application submitted successfully! In a production environment, this would redirect to Stripe payment processing.');
-      
-      // Redirect to payment confirmation or success page
-      router.push(`/rental-application-success?listingName=${encodeURIComponent(formData.listingName)}`);
+      // Redirect to checkout page with application and payment data
+      if (clientSecret) {
+        const redirectUrl = `/rental-application-checkout?listingName=${encodeURIComponent(formData.listingName)}&applicationId=${applicationData.applicationId}&clientSecret=${encodeURIComponent(clientSecret)}&paymentIntent=${paymentIntentId}`;
+        
+        console.log('Redirecting to checkout:', redirectUrl);
+        router.push(redirectUrl);
+      } else {
+        throw new Error('Failed to create payment intent - no client secret received');
+      }
       
     } catch (error) {
       console.error('Error processing application:', error);
