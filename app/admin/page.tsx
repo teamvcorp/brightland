@@ -295,15 +295,19 @@ const RequestModal = ({
   );
 };
 
-// Property Form Component
-const AddPropertyForm = ({ 
+// Enhanced Property Form Component for Add/Edit
+const PropertyForm = ({ 
   isOpen, 
   onClose, 
-  propertyOwners 
+  propertyOwners,
+  editingProperty,
+  onPropertySaved
 }: { 
   isOpen: boolean;
   onClose: () => void;
   propertyOwners: Array<{_id: string, name: string}>;
+  editingProperty?: any;
+  onPropertySaved: () => void;
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -320,10 +324,81 @@ const AddPropertyForm = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<string>('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Load form data when editing
+  useEffect(() => {
+    if (editingProperty) {
+      setFormData({
+        name: editingProperty.name || '',
+        type: editingProperty.type || '',
+        sqft: editingProperty.sqft?.toString() || '',
+        description: editingProperty.description || '',
+        rent: editingProperty.rent?.toString() || '',
+        extraAdult: editingProperty.extraAdult?.toString() || '',
+        amenities: Array.isArray(editingProperty.amenities) 
+          ? editingProperty.amenities.join(', ') 
+          : editingProperty.amenities || '',
+        status: editingProperty.status || 'available',
+        picture: editingProperty.picture || '',
+        propertyOwnerName: editingProperty.ownerName || '',
+        address: editingProperty.address || ''
+      });
+      setImagePreview(editingProperty.picture || '');
+    } else {
+      // Reset form for new property
+      setFormData({
+        name: '',
+        type: '',
+        sqft: '',
+        description: '',
+        rent: '',
+        extraAdult: '',
+        amenities: '',
+        status: 'available',
+        picture: '',
+        propertyOwnerName: '',
+        address: ''
+      });
+      setImagePreview('');
+    }
+    setImageFile(null);
+    setSubmitStatus('');
+  }, [editingProperty, isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => setImagePreview(e.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/upload-property-image', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to upload image');
+    }
+
+    const data = await response.json();
+    return data.url;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -332,35 +407,58 @@ const AddPropertyForm = ({
     setSubmitStatus('');
 
     try {
-      const response = await fetch('/api/properties', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          sqft: parseInt(formData.sqft),
-          rent: parseFloat(formData.rent),
-          extraAdult: formData.extraAdult ? parseInt(formData.extraAdult) : 0,
-          amenities: formData.amenities.split(',').map(a => a.trim()).filter(Boolean)
-        }),
-      });
+      let pictureUrl = formData.picture;
+
+      // Upload new image if selected
+      if (imageFile) {
+        setUploadingImage(true);
+        try {
+          pictureUrl = await uploadImage(imageFile);
+        } catch (imageError: any) {
+          setSubmitStatus(`❌ Image upload failed: ${imageError.message}`);
+          setIsSubmitting(false);
+          setUploadingImage(false);
+          return;
+        }
+        setUploadingImage(false);
+      }
+
+      const propertyPayload = {
+        ...formData,
+        sqft: parseInt(formData.sqft),
+        rent: parseFloat(formData.rent),
+        extraAdult: formData.extraAdult ? parseInt(formData.extraAdult) : 0,
+        amenities: formData.amenities.split(',').map(a => a.trim()).filter(Boolean),
+        picture: pictureUrl
+      };
+
+      let response;
+      if (editingProperty) {
+        // Update existing property
+        response = await fetch('/api/properties', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            propertyId: editingProperty._id,
+            ...propertyPayload
+          }),
+        });
+      } else {
+        // Create new property
+        response = await fetch('/api/properties', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(propertyPayload),
+        });
+      }
 
       if (response.ok) {
-        setSubmitStatus('✅ Property added successfully!');
-        setFormData({
-          name: '',
-          type: '',
-          sqft: '',
-          description: '',
-          rent: '',
-          extraAdult: '',
-          amenities: '',
-          status: 'available',
-          picture: '',
-          propertyOwnerName: '',
-          address: ''
-        });
+        setSubmitStatus(`✅ Property ${editingProperty ? 'updated' : 'added'} successfully!`);
+        onPropertySaved();
         setTimeout(() => {
           setSubmitStatus('');
           onClose();
@@ -370,7 +468,7 @@ const AddPropertyForm = ({
         setSubmitStatus(`❌ Error: ${errorData.message}`);
       }
     } catch (error) {
-      setSubmitStatus('❌ Error: Failed to add property');
+      setSubmitStatus(`❌ Error: Failed to ${editingProperty ? 'update' : 'add'} property`);
     } finally {
       setIsSubmitting(false);
     }
@@ -380,9 +478,11 @@ const AddPropertyForm = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex justify-between items-center">
-          <h2 className="text-lg sm:text-xl font-bold">Add New Property</h2>
+          <h2 className="text-lg sm:text-xl font-bold">
+            {editingProperty ? 'Edit Property' : 'Add New Property'}
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 p-1"
@@ -404,7 +504,8 @@ const AddPropertyForm = ({
               value={formData.propertyOwnerName}
               onChange={handleInputChange}
               required
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={!!editingProperty}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
             >
               <option value="">Select Property Owner</option>
               {propertyOwners.map(owner => (
@@ -413,6 +514,9 @@ const AddPropertyForm = ({
                 </option>
               ))}
             </select>
+            {editingProperty && (
+              <p className="text-xs text-gray-500 mt-1">Property owner cannot be changed when editing</p>
+            )}
           </div>
 
           {/* Basic Info */}
@@ -562,19 +666,47 @@ const AddPropertyForm = ({
             <p className="text-xs text-gray-500 mt-1">Separate amenities with commas</p>
           </div>
 
-          {/* Picture URL */}
+          {/* Property Image Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Picture URL
+              Property Image
             </label>
-            <input
-              type="url"
-              name="picture"
-              value={formData.picture}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="https://example.com/property-image.jpg"
-            />
+            <div className="space-y-3">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {imagePreview && (
+                <div className="relative">
+                  <Image
+                    src={imagePreview}
+                    alt="Property preview"
+                    width={384}
+                    height={192}
+                    className="w-full max-w-sm h-48 object-cover rounded-lg border"
+                  />
+                  {imageFile && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview(editingProperty?.picture || '');
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-gray-500">
+              Upload a high-quality image of the property (max 5MB)
+            </p>
           </div>
 
           {/* Submit Status */}
@@ -595,10 +727,15 @@ const AddPropertyForm = ({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || uploadingImage}
               className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300"
             >
-              {isSubmitting ? "Adding Property..." : "Add Property"}
+              {uploadingImage 
+                ? "Uploading Image..." 
+                : isSubmitting 
+                  ? `${editingProperty ? 'Updating' : 'Adding'} Property...` 
+                  : `${editingProperty ? 'Update' : 'Add'} Property`
+              }
             </button>
           </div>
         </form>
@@ -617,8 +754,12 @@ export default function AdminPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showPropertySection, setShowPropertySection] = useState(false);
-  const [showAddPropertyForm, setShowAddPropertyForm] = useState(false);
+  const [showPropertyForm, setShowPropertyForm] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<any>(null);
   const [propertyOwners, setPropertyOwners] = useState<Array<{_id: string, name: string}>>([]);
+  const [selectedOwnerFilter, setSelectedOwnerFilter] = useState<string>('all');
+  const [allProperties, setAllProperties] = useState<any[]>([]);
+  const [filteredProperties, setFilteredProperties] = useState<any[]>([]);
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -646,6 +787,18 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchProperties = useCallback(async () => {
+    try {
+      const response = await fetch('/api/properties');
+      if (response.ok) {
+        const data = await response.json();
+        setAllProperties(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+    }
+  }, []);
+
   const checkAdminStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/check-admin');
@@ -658,11 +811,12 @@ export default function AdminPage() {
       
       fetchRequests();
       fetchPropertyOwners();
+      fetchProperties();
     } catch (error) {
       console.error('Error checking admin status:', error);
       router.push('/dashboard');
     }
-  }, [router, fetchRequests, fetchPropertyOwners]);
+  }, [router, fetchRequests, fetchPropertyOwners, fetchProperties]);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -683,12 +837,62 @@ export default function AdminPage() {
     }
   }, [requests, statusFilter]);
 
+  // Filter properties by selected owner
+  useEffect(() => {
+    if (selectedOwnerFilter === 'all') {
+      setFilteredProperties(allProperties);
+    } else {
+      setFilteredProperties(allProperties.filter(property => property.ownerName === selectedOwnerFilter));
+    }
+  }, [allProperties, selectedOwnerFilter]);
+
   const handleRequestUpdate = (updatedRequest: ManagerRequest) => {
     setRequests(prev => 
       prev.map(req => 
         req._id === updatedRequest._id ? updatedRequest : req
       )
     );
+  };
+
+  const handleDeleteProperty = async (property: any) => {
+    if (!confirm(`Are you sure you want to delete "${property.name}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/properties', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          propertyId: property._id,
+          propertyOwnerName: property.ownerName
+        }),
+      });
+
+      if (response.ok) {
+        // Refresh properties list
+        fetchProperties();
+        alert('Property deleted successfully');
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.message}`);
+      }
+    } catch (error) {
+      alert('Failed to delete property');
+    }
+  };
+
+  const handlePropertySaved = () => {
+    // Refresh properties list after add/edit
+    fetchProperties();
+    setEditingProperty(null);
+  };
+
+  const handleClosePropertyForm = () => {
+    setShowPropertyForm(false);
+    setEditingProperty(null);
   };
 
   const openModal = (request: ManagerRequest) => {
@@ -738,47 +942,111 @@ export default function AdminPage() {
         <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 mb-2 sm:mb-0">
-              Property Management
+              Property Management ({filteredProperties.length} properties)
             </h2>
-            <button
-              onClick={() => setShowPropertySection(!showPropertySection)}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-            >
-              {showPropertySection ? 'Hide' : 'Show'} Property Tools
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={selectedOwnerFilter}
+                onChange={(e) => setSelectedOwnerFilter(e.target.value)}
+                className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
+                <option value="all">All Property Owners</option>
+                {propertyOwners.map(owner => (
+                  <option key={owner._id} value={owner.name}>
+                    {owner.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => setShowPropertyForm(true)}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+              >
+                Add Property
+              </button>
+            </div>
           </div>
           
-          {showPropertySection && (
-            <div className="space-y-4 border-t pt-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => setShowAddPropertyForm(true)}
-                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
-                >
-                  Add New Property
-                </button>
-                <button
-                  onClick={() => window.open('/api/properties', '_blank')}
-                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
-                >
-                  View Properties API
-                </button>
-                <button
-                  onClick={() => window.open('/api/property-owners', '_blank')}
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
-                  View Property Owners API
-                </button>
-              </div>
-              
-              <div className="text-xs text-gray-500 space-y-1">
-                <p>• Add new properties to existing property owners using our clean embedded structure</p>
-                <p>• Use APIs to view current database contents and verify data integrity</p>
-                <p>• New properties are automatically added to the selected property owner&apos;s embedded properties array</p>
-                <p>• Property management now fully database-driven with no static data dependencies</p>
-              </div>
-            </div>
-          )}
+          {/* Properties Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left text-gray-600">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th scope="col" className="py-3 px-4">Image</th>
+                  <th scope="col" className="py-3 px-4">Name</th>
+                  <th scope="col" className="py-3 px-4">Owner</th>
+                  <th scope="col" className="py-3 px-4">Type</th>
+                  <th scope="col" className="py-3 px-4">Rent</th>
+                  <th scope="col" className="py-3 px-4">Status</th>
+                  <th scope="col" className="py-3 px-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProperties.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-gray-500">
+                      No properties found{selectedOwnerFilter !== 'all' ? ` for ${selectedOwnerFilter}` : ''}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProperties.map((property) => (
+                    <tr key={property._id} className="bg-white border-b hover:bg-gray-50">
+                      <td className="py-4 px-4">
+                        {property.picture ? (
+                          <Image
+                            src={property.picture}
+                            alt={property.name}
+                            width={60}
+                            height={40}
+                            className="w-15 h-10 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="w-15 h-10 bg-gray-200 rounded flex items-center justify-center">
+                            <span className="text-xs text-gray-500">No image</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 font-medium text-gray-900">{property.name}</td>
+                      <td className="py-4 px-4">{property.ownerName}</td>
+                      <td className="py-4 px-4 capitalize">{property.type}</td>
+                      <td className="py-4 px-4">${property.rent?.toLocaleString()}</td>
+                      <td className="py-4 px-4">
+                        <span
+                          className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
+                            property.status === "available"
+                              ? "bg-green-100 text-green-800"
+                              : property.status === "occupied"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {property.status}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => {
+                              setEditingProperty(property);
+                              setShowPropertyForm(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProperty(property)}
+                            className="text-red-600 hover:text-red-800 font-medium text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Status Filter Tabs */}
@@ -916,10 +1184,12 @@ export default function AdminPage() {
           onUpdate={handleRequestUpdate}
         />
 
-        <AddPropertyForm
-          isOpen={showAddPropertyForm}
-          onClose={() => setShowAddPropertyForm(false)}
+        <PropertyForm
+          isOpen={showPropertyForm}
+          onClose={handleClosePropertyForm}
           propertyOwners={propertyOwners}
+          editingProperty={editingProperty}
+          onPropertySaved={handlePropertySaved}
         />
       </div>
     </div>

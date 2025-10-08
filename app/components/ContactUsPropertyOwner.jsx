@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 
 export default function ContactUsPropertyOwner() {
   const router = useRouter();
@@ -396,9 +397,11 @@ export default function ContactUsPropertyOwner() {
                 />
                 {problemImagePreview && (
                   <div className="relative">
-                    <img
+                    <Image
                       src={problemImagePreview}
                       alt="Problem preview"
+                      width={384}
+                      height={192}
                       className="w-full max-w-xs h-48 object-cover rounded-lg border"
                     />
                     <button

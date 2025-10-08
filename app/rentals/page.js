@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation"; // Import useRouter for navigation
+import Image from "next/image";
 
 // Reusable modal component for enlarged image
 const ImageModal = ({ isOpen, imageSrc, onClose }) => {
@@ -9,9 +10,11 @@ const ImageModal = ({ isOpen, imageSrc, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
       <div className="relative max-w-3xl w-full m-4" onClick={(e) => e.stopPropagation()}>
-        <img
+        <Image
           src={imageSrc}
           alt="Enlarged view"
+          width={800}
+          height={600}
           className="w-full h-auto rounded-lg shadow-xl"
         />
         <button
@@ -69,9 +72,11 @@ const ListingRow = ({ listing, showExtraAdult = true }) => {
         </td>
         <td className="py-4 px-6 flex items-center space-x-2">
           <button onClick={handleImageClick} className="focus:outline-none">
-            <img
+            <Image
               src={listing.picture || "https://via.placeholder.com/100x60"}
               alt={listing.name}
+              width={64}
+              height={40}
               className="w-16 h-10 object-cover rounded hover:opacity-80 transition-opacity cursor-pointer"
             />
           </button>

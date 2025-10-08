@@ -1,4 +1,5 @@
 import { Html, Head, Body, Container, Section, Heading, Text } from "@react-email/components";
+import Image from 'next/image';
 
 export const ContactEmailManager = ({ fullname, email, phone, address, projectDescription, message, problemImageUrl }) => (
   <Html>
@@ -20,9 +21,11 @@ export const ContactEmailManager = ({ fullname, email, phone, address, projectDe
           {problemImageUrl && (
             <>
               <Text><strong>Problem Image:</strong></Text>
-              <img 
+              <Image 
                 src={problemImageUrl} 
                 alt="Problem reported by tenant" 
+                width={400}
+                height={300}
                 style={{ maxWidth: "400px", height: "auto", border: "1px solid #ddd", borderRadius: "5px" }}
               />
             </>

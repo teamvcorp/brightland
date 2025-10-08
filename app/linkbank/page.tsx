@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
+import Image from 'next/image';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -106,9 +107,11 @@ function AddBankForm({ session, router }: { session: any; router: any }) {
       <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-sm lg:w-96 bg-white p-8 rounded-lg shadow-md">
           <div>
-            <img
+            <Image
               alt="Your Company"
               src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=600"
+              width={40}
+              height={40}
               className="h-10 w-auto"
             />
             <h2 className="mt-8 text-2xl font-bold tracking-tight text-gray-900">Add Payment Method</h2>
@@ -222,9 +225,10 @@ function AddBankForm({ session, router }: { session: any; router: any }) {
         </div>
       </div>
       <div className="relative hidden w-0 flex-1 lg:block">
-        <img
+        <Image
           alt=""
           src="https://images.unsplash.com/photo-1496917756835-20cb06e75b4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1908&q=80"
+          fill
           className="absolute inset-0 h-full w-full object-cover"
         />
       </div>

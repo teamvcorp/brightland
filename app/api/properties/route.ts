@@ -118,3 +118,124 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { propertyId, propertyOwnerName, ...propertyData } = await req.json();
+    
+    if (!propertyId || !propertyOwnerName) {
+      return NextResponse.json(
+        { message: 'Property ID and Property Owner Name are required' },
+        { status: 400 }
+      );
+    }
+
+    await connectToDatabase();
+
+    // Update the specific property within the property owner's embedded properties array
+    const result = await PropertyOwnerModel.findOneAndUpdate(
+      { 
+        name: propertyOwnerName,
+        'properties._id': propertyId 
+      },
+      {
+        $set: {
+          'properties.$': {
+            _id: propertyId,
+            name: propertyData.name,
+            type: propertyData.type,
+            sqft: propertyData.sqft,
+            description: propertyData.description,
+            rent: propertyData.rent,
+            extraAdult: propertyData.extraAdult || 0,
+            amenities: propertyData.amenities,
+            status: propertyData.status || 'available',
+            picture: propertyData.picture,
+            address: propertyData.address,
+          }
+        }
+      },
+      { new: true }
+    );
+
+    if (!result) {
+      return NextResponse.json(
+        { message: `Property not found or property owner '${propertyOwnerName}' not found` },
+        { status: 404 }
+      );
+    }
+
+    // Find and return the updated property
+    const updatedProperty = result.properties.find((p: any) => p._id.toString() === propertyId);
+    
+    return NextResponse.json({
+      ...updatedProperty.toObject(),
+      ownerName: result.name,
+      ownerId: result._id,
+    });
+  } catch (error: any) {
+    console.error('Error updating property:', error);
+    return NextResponse.json(
+      { message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { propertyId, propertyOwnerName } = await req.json();
+    
+    if (!propertyId || !propertyOwnerName) {
+      return NextResponse.json(
+        { message: 'Property ID and Property Owner Name are required' },
+        { status: 400 }
+      );
+    }
+
+    await connectToDatabase();
+
+    // Remove the property from the property owner's embedded properties array
+    const result = await PropertyOwnerModel.findOneAndUpdate(
+      { name: propertyOwnerName },
+      {
+        $pull: {
+          properties: { _id: propertyId }
+        }
+      },
+      { new: true }
+    );
+
+    if (!result) {
+      return NextResponse.json(
+        { message: `Property owner '${propertyOwnerName}' not found` },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      message: 'Property deleted successfully',
+      propertyId,
+      ownerName: result.name,
+      remainingPropertiesCount: result.properties.length
+    });
+  } catch (error: any) {
+    console.error('Error deleting property:', error);
+    return NextResponse.json(
+      { message: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

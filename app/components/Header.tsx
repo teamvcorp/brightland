@@ -3,6 +3,7 @@ import Link from 'next/link';
 import SignOut from './SignOut';
 import { useSession } from 'next-auth/react';
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 
 const Header = () => {
@@ -28,7 +29,13 @@ const Header = () => {
     return (
         <header>
             <Link href="/">
-                <img className="logo" src="/Logo3Sun.gif" alt="Bright Land Logo" />
+                <Image 
+                    className="logo" 
+                    src="/Logo3Sun.gif" 
+                    alt="Bright Land Logo" 
+                    width={150}
+                    height={75}
+                />
             </Link>
             <div className="headerBtnContainer">
                 {!session && (<Link href="/signup">
