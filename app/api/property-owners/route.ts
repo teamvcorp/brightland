@@ -8,18 +8,42 @@ export async function GET() {
     console.log('Environment:', process.env.NODE_ENV);
     console.log('MongoDB URI exists:', !!process.env.MONGODB_URI);
     
-    await connectToDatabase();
+    const connection = await connectToDatabase();
     console.log('Database connected successfully');
     
-    const propertyOwners = await PropertyOwnerModel.find({})
-      .sort({ name: 1 })
-      .lean()
-      .exec();
-
-    console.log('Query executed, found:', propertyOwners?.length || 0, 'property owners');
+    let propertyOwners;
+    
+    try {
+      // First try using the Mongoose model
+      propertyOwners = await PropertyOwnerModel.find({})
+        .sort({ name: 1 })
+        .lean()
+        .exec();
+      
+      console.log('Mongoose query executed, found:', propertyOwners?.length || 0, 'property owners');
+      
+      // If Mongoose returns empty but we suspect data exists, try direct query
+      if (!propertyOwners || propertyOwners.length === 0) {
+        console.log('Mongoose returned empty, trying direct database query...');
+        const db = connection.connection.db;
+        const directResult = await db?.collection('propertyowners').find({}).sort({ name: 1 }).toArray();
+        console.log('Direct query found:', directResult?.length || 0, 'property owners');
+        
+        if (directResult && directResult.length > 0) {
+          propertyOwners = directResult;
+          console.log('Using direct query results');
+        }
+      }
+    } catch (modelError) {
+      console.error('Mongoose model error, falling back to direct query:', modelError);
+      // Fallback to direct database query
+      const db = connection.connection.db;
+      propertyOwners = await db?.collection('propertyowners').find({}).sort({ name: 1 }).toArray();
+      console.log('Fallback direct query found:', propertyOwners?.length || 0, 'property owners');
+    }
 
     // If no property owners found, return empty array
-    if (!propertyOwners) {
+    if (!propertyOwners || propertyOwners.length === 0) {
       console.log('No property owners found in database');
       return NextResponse.json([]);
     }
