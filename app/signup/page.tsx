@@ -53,7 +53,16 @@ export default function SignUpPage() {
     const loadPropertyOwners = async () => {
       try {
         console.log('Starting to load property owners...');
-        const response = await fetch('/api/property-owners');
+        
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+        
+        const response = await fetch('/api/property-owners', {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
         console.log('Property owners response status:', response.status, response.statusText);
         
         if (response.ok) {
@@ -78,8 +87,12 @@ export default function SignUpPage() {
           setPropertyOwners([]);
         }
       } catch (error) {
-        console.error('Error loading property owners:', error);
-        console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error('Property owners request timed out after 8 seconds');
+        } else {
+          console.error('Error loading property owners:', error);
+          console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
+        }
         setPropertyOwners([]);
       }
     };

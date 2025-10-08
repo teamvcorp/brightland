@@ -14,7 +14,16 @@ export async function connectToDatabase() {
   }
 
   try {
-    const connection = await mongoose.connect(MONGODB_URI);
+    const connection = await mongoose.connect(MONGODB_URI, {
+      // Optimize for serverless environments
+      bufferCommands: false,
+      bufferMaxEntries: 0,
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000, // 5 seconds instead of default 30s
+      socketTimeoutMS: 10000, // 10 seconds
+      connectTimeoutMS: 5000, // 5 seconds
+    });
+    
     cachedConnection = connection;
     console.log('Connected to MongoDB');
     return connection;

@@ -3,63 +3,49 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { PropertyOwnerModel } from '@/models/PropertyOwner';
 
 export async function GET() {
+  const startTime = Date.now();
+  
   try {
-    console.log('Property owners API called');
-    console.log('Environment:', process.env.NODE_ENV);
-    console.log('MongoDB URI exists:', !!process.env.MONGODB_URI);
+    console.log('Property owners API called at:', new Date().toISOString());
     
     const connection = await connectToDatabase();
-    console.log('Database connected successfully');
+    console.log('Database connected in:', Date.now() - startTime, 'ms');
     
     let propertyOwners: any[] = [];
     
     try {
-      // First try using the Mongoose model
-      propertyOwners = await PropertyOwnerModel.find({})
+      // Use a more efficient query with projection to reduce data transfer
+      propertyOwners = await PropertyOwnerModel.find({}, { name: 1, email: 1, _id: 1 })
         .sort({ name: 1 })
         .lean()
+        .limit(50) // Add reasonable limit to prevent huge queries
         .exec();
       
-      console.log('Mongoose query executed, found:', propertyOwners?.length || 0, 'property owners');
+      console.log('Mongoose query completed in:', Date.now() - startTime, 'ms, found:', propertyOwners?.length || 0, 'property owners');
       
-      // If Mongoose returns empty but we suspect data exists, try direct query
-      if (!propertyOwners || propertyOwners.length === 0) {
-        console.log('Mongoose returned empty, trying direct database query...');
-        const db = connection.connection.db;
-        const directResult = await db?.collection('propertyowners').find({}).sort({ name: 1 }).toArray();
-        console.log('Direct query found:', directResult?.length || 0, 'property owners');
-        
-        if (directResult && directResult.length > 0) {
-          propertyOwners = directResult;
-          console.log('Using direct query results');
-        }
-      }
     } catch (modelError) {
-      console.error('Mongoose model error, falling back to direct query:', modelError);
-      // Fallback to direct database query
+      console.error('Mongoose error, using direct query:', modelError);
+      // Simplified direct query with projection
       const db = connection.connection.db;
-      const directResult = await db?.collection('propertyowners').find({}).sort({ name: 1 }).toArray();
+      const directResult = await db?.collection('propertyowners')
+        .find({}, { projection: { name: 1, email: 1, _id: 1 } })
+        .sort({ name: 1 })
+        .limit(50)
+        .toArray();
+      
       propertyOwners = directResult || [];
-      console.log('Fallback direct query found:', propertyOwners?.length || 0, 'property owners');
+      console.log('Direct query completed in:', Date.now() - startTime, 'ms, found:', propertyOwners?.length || 0, 'property owners');
     }
 
-    // If no property owners found, return empty array
-    if (!propertyOwners || propertyOwners.length === 0) {
-      console.log('No property owners found in database');
-      return NextResponse.json([]);
-    }
-
-    console.log(`Returning ${propertyOwners.length} property owners`);
-    console.log('Property owners data:', propertyOwners.map(po => ({ name: po.name, id: po._id })));
+    console.log('Total API time:', Date.now() - startTime, 'ms');
     
-    // Return just the array, not wrapped in an object
+    // Return just the array
     return NextResponse.json(propertyOwners);
-  } catch (error: any) {
-    console.error('Error fetching property owners:', error);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
     
-    // Always return an empty array instead of error object to prevent frontend crashes
+  } catch (error: any) {
+    console.error('API Error after', Date.now() - startTime, 'ms:', error.message);
+    
+    // Always return an empty array to prevent frontend crashes
     return NextResponse.json([]);
   }
 }
