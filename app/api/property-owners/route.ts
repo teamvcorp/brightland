@@ -11,39 +11,49 @@ export async function GET() {
     const connection = await connectToDatabase();
     console.log('Database connected in:', Date.now() - startTime, 'ms');
     
+    // Try the simplest possible approach first - direct collection query
+    const db = connection.connection.db;
+    console.log('Database name:', db?.databaseName);
+    
+    // List all collections to debug
+    const collections = await db?.listCollections().toArray();
+    console.log('Available collections:', collections?.map(c => c.name));
+    
+    // Try multiple collection names that might exist
+    const possibleCollectionNames = ['propertyowners', 'PropertyOwners', 'property_owners', 'propertyOwners'];
     let propertyOwners: any[] = [];
     
-    try {
-      // Use a more efficient query with projection to reduce data transfer
-      propertyOwners = await PropertyOwnerModel.find({}, { name: 1, email: 1, _id: 1 })
-        .sort({ name: 1 })
-        .lean()
-        .limit(50) // Add reasonable limit to prevent huge queries
-        .exec();
-      
-      console.log('Mongoose query completed in:', Date.now() - startTime, 'ms, found:', propertyOwners?.length || 0, 'property owners');
-      
-    } catch (modelError) {
-      console.error('Mongoose error, using direct query:', modelError);
-      // Simplified direct query with projection
-      const db = connection.connection.db;
-      const directResult = await db?.collection('propertyowners')
-        .find({}, { projection: { name: 1, email: 1, _id: 1 } })
-        .sort({ name: 1 })
-        .limit(50)
-        .toArray();
-      
-      propertyOwners = directResult || [];
-      console.log('Direct query completed in:', Date.now() - startTime, 'ms, found:', propertyOwners?.length || 0, 'property owners');
+    for (const collectionName of possibleCollectionNames) {
+      try {
+        const count = await db?.collection(collectionName).countDocuments();
+        console.log(`Collection "${collectionName}" has ${count} documents`);
+        
+        if (count && count > 0) {
+          const result = await db?.collection(collectionName)
+            .find({})
+            .limit(50)
+            .toArray();
+          
+          if (result && result.length > 0) {
+            propertyOwners = result;
+            console.log(`Found ${result.length} property owners in collection "${collectionName}"`);
+            break;
+          }
+        }
+      } catch (collectionError: any) {
+        console.log(`Collection "${collectionName}" not found or error:`, collectionError.message);
+      }
     }
-
+    
     console.log('Total API time:', Date.now() - startTime, 'ms');
+    console.log('Returning property owners:', propertyOwners.length);
     
     // Return just the array
     return NextResponse.json(propertyOwners);
     
   } catch (error: any) {
     console.error('API Error after', Date.now() - startTime, 'ms:', error.message);
+    console.error('Full error:', error);
     
     // Always return an empty array to prevent frontend crashes
     return NextResponse.json([]);
