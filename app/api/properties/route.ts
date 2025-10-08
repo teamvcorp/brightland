@@ -13,6 +13,12 @@ export async function GET() {
       .lean()
       .exec();
 
+    // If no property owners found, return empty array
+    if (!propertyOwners || propertyOwners.length === 0) {
+      console.log('No property owners found');
+      return NextResponse.json([]);
+    }
+
     // Flatten all properties from all owners into a single array
     const allProperties: any[] = [];
     
@@ -31,13 +37,12 @@ export async function GET() {
     // Sort properties by name
     allProperties.sort((a, b) => a.name.localeCompare(b.name));
 
+    console.log(`Returning ${allProperties.length} properties`);
     return NextResponse.json(allProperties);
   } catch (error: any) {
     console.error('Error fetching properties:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+    // Always return an empty array instead of error object to prevent frontend crashes
+    return NextResponse.json([]);
   }
 }
 

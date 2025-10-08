@@ -29,10 +29,16 @@ export default function SignUpPage() {
         const response = await fetch('/api/properties');
         if (response.ok) {
           const dbProperties = await response.json();
-          setProperties(dbProperties.map((p: any) => ({ 
-            name: p.name, 
-            description: p.description 
-          })));
+          // Ensure dbProperties is an array before mapping
+          if (Array.isArray(dbProperties)) {
+            setProperties(dbProperties.map((p: any) => ({ 
+              name: p.name, 
+              description: p.description 
+            })));
+          } else {
+            console.error('Properties data is not an array:', dbProperties);
+            setProperties([]);
+          }
         } else {
           console.error('Failed to load properties from database');
           setProperties([]);
@@ -48,11 +54,16 @@ export default function SignUpPage() {
       try {
         const response = await fetch('/api/property-owners');
         if (response.ok) {
-          const owners = await response.json();
-          setPropertyOwners(owners);
+          const data = await response.json();
+          // Handle the nested structure from the API
+          setPropertyOwners(data.propertyOwners || []);
+        } else {
+          console.error('Failed to load property owners');
+          setPropertyOwners([]);
         }
       } catch (error) {
         console.error('Error loading property owners:', error);
+        setPropertyOwners([]);
       }
     };
 

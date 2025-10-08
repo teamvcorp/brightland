@@ -10,13 +10,19 @@ export async function GET() {
       .lean()
       .exec();
 
-    return NextResponse.json({ propertyOwners });
+    // If no property owners found, return empty array
+    if (!propertyOwners) {
+      console.log('No property owners found');
+      return NextResponse.json([]);
+    }
+
+    console.log(`Returning ${propertyOwners.length} property owners`);
+    // Return just the array, not wrapped in an object
+    return NextResponse.json(propertyOwners);
   } catch (error: any) {
     console.error('Error fetching property owners:', error);
-    return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
-    );
+    // Always return an empty array instead of error object to prevent frontend crashes
+    return NextResponse.json([]);
   }
 }
 

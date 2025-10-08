@@ -98,38 +98,51 @@ const ListingRow = ({ listing, showExtraAdult = true }) => {
 };
 
 // Reusable table component
-const ListingTable = ({ title, listings, showExtraAdult = true }) => (
-  <div className="mb-8 bg-white rounded-xl shadow-lg overflow-hidden">
-    <h3 className="text-xl font-bold text-gray-800 bg-gray-50 p-4 border-b border-gray-200 text-center">
-      {title}
-    </h3>
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left text-gray-600">
-        <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-          <tr>
-            <th scope="col" className="py-3 px-6">Name</th>
-            <th scope="col" className="py-3 px-6">Sqft</th>
-            <th scope="col" className="py-3 px-6">Description</th>
-            <th scope="col" className="py-3 px-6">Base Rent</th>
-            {showExtraAdult && (
-              <th scope="col" className="py-3 px-6 hidden sm:table-cell">Extra Adult</th>
-            )}
-            <th scope="col" className="py-3 px-6">Status</th>
-            <th scope="col" className="py-3 px-6">Picture/Inquire</th>
-          </tr>
-        </thead>
-        <tbody>
-          {listings.filter(listing => listing.status === "available").map((listing, idx) => (
-            <ListingRow key={listing._id || idx} listing={listing} showExtraAdult={showExtraAdult} />
-          ))}
-        </tbody>
-      </table>
+const ListingTable = ({ title, listings, showExtraAdult = true }) => {
+  const availableListings = listings.filter(listing => listing.status === "available");
+  
+  return (
+    <div className="mb-8 bg-white rounded-xl shadow-lg overflow-hidden">
+      <h3 className="text-xl font-bold text-gray-800 bg-gray-50 p-4 border-b border-gray-200 text-center">
+        {title} ({availableListings.length} available)
+      </h3>
+      {availableListings.length === 0 ? (
+        <div className="p-8 text-center text-gray-500">
+          <p className="text-lg">No available properties found for this category.</p>
+          <p className="text-sm mt-2">Try selecting a different property owner or check back later.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left text-gray-600">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+              <tr>
+                <th scope="col" className="py-3 px-6">Name</th>
+                <th scope="col" className="py-3 px-6">Sqft</th>
+                <th scope="col" className="py-3 px-6">Description</th>
+                <th scope="col" className="py-3 px-6">Base Rent</th>
+                {showExtraAdult && (
+                  <th scope="col" className="py-3 px-6 hidden sm:table-cell">Extra Adult</th>
+                )}
+                <th scope="col" className="py-3 px-6">Status</th>
+                <th scope="col" className="py-3 px-6">Picture/Inquire</th>
+              </tr>
+            </thead>
+            <tbody>
+              {availableListings.map((listing, idx) => (
+                <ListingRow key={listing._id || idx} listing={listing} showExtraAdult={showExtraAdult} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 const Rentals = () => {
   const [properties, setProperties] = useState([]);
+  const [propertyOwners, setPropertyOwners] = useState([]);
+  const [selectedOwner, setSelectedOwner] = useState('all');
   const [loading, setLoading] = useState(true);
 
   // Fetch properties from API
@@ -139,10 +152,20 @@ const Rentals = () => {
         const response = await fetch('/api/properties');
         if (response.ok) {
           const data = await response.json();
-          setProperties(data || []);
+          // Ensure data is an array before setting it
+          if (Array.isArray(data)) {
+            setProperties(data);
+          } else {
+            console.error('Properties data is not an array:', data);
+            setProperties([]);
+          }
+        } else {
+          console.error('Failed to fetch properties');
+          setProperties([]);
         }
       } catch (error) {
         console.error('Error fetching properties:', error);
+        setProperties([]);
       } finally {
         setLoading(false);
       }
@@ -151,9 +174,42 @@ const Rentals = () => {
     fetchProperties();
   }, []);
 
-  // Filter properties by type
+  // Fetch property owners for the dropdown
+  useEffect(() => {
+    const fetchPropertyOwners = async () => {
+      try {
+        const response = await fetch('/api/property-owners');
+        if (response.ok) {
+          const data = await response.json();
+          // Ensure data is an array before setting it
+          if (Array.isArray(data)) {
+            setPropertyOwners(data);
+          } else {
+            console.error('Property owners data is not an array:', data);
+            setPropertyOwners([]);
+          }
+        } else {
+          console.error('Failed to fetch property owners');
+          setPropertyOwners([]);
+        }
+      } catch (error) {
+        console.error('Error fetching property owners:', error);
+        setPropertyOwners([]);
+      }
+    };
+
+    fetchPropertyOwners();
+  }, []);
+
+  // Filter properties by type and selected owner
   const getFilteredProperties = (type) => {
-    return properties.filter(property => property.type === type);
+    let filtered = properties.filter(property => property.type === type);
+    
+    if (selectedOwner !== 'all') {
+      filtered = filtered.filter(property => property.ownerName === selectedOwner);
+    }
+    
+    return filtered;
   };
 
   const resRentalList = getFilteredProperties('residential');
@@ -170,6 +226,42 @@ const Rentals = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Header and Owner Filter */}
+      <div className="mb-8 bg-white rounded-xl shadow-lg p-6">
+        <h1 className="text-3xl font-bold text-gray-800 text-center mb-6">
+          Available Rental Properties
+        </h1>
+        
+        {/* Property Owner Filter */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <label htmlFor="owner-select" className="text-lg font-medium text-gray-700">
+            Filter by Property Owner:
+          </label>
+          <select
+            id="owner-select"
+            value={selectedOwner}
+            onChange={(e) => setSelectedOwner(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-48"
+          >
+            <option value="all">All Property Owners</option>
+            {propertyOwners.map((owner) => (
+              <option key={owner._id} value={owner.name}>
+                {owner.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        {/* Show selected owner info */}
+        {selectedOwner !== 'all' && (
+          <div className="mt-4 text-center">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+              Showing properties owned by: {selectedOwner}
+            </span>
+          </div>
+        )}
+      </div>
+
       <ListingTable
         title="House Listings"
         listings={houseRentalList}
