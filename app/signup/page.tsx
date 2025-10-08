@@ -52,22 +52,34 @@ export default function SignUpPage() {
     // Load property owners
     const loadPropertyOwners = async () => {
       try {
+        console.log('Starting to load property owners...');
         const response = await fetch('/api/property-owners');
+        console.log('Property owners response status:', response.status, response.statusText);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log('Property owners response data:', data);
+          console.log('Is response data an array?', Array.isArray(data));
+          console.log('Response data length:', data?.length);
+          
           // Ensure data is an array before setting it
           if (Array.isArray(data)) {
             setPropertyOwners(data);
+            console.log('Successfully set property owners:', data.length, 'owners');
           } else {
             console.error('Property owners data is not an array:', data);
+            console.error('Data type:', typeof data);
             setPropertyOwners([]);
           }
         } else {
-          console.error('Failed to load property owners');
+          console.error('Failed to load property owners - response not ok');
+          console.error('Response status:', response.status);
+          console.error('Response text:', await response.text());
           setPropertyOwners([]);
         }
       } catch (error) {
         console.error('Error loading property owners:', error);
+        console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
         setPropertyOwners([]);
       }
     };
