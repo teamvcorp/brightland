@@ -4,6 +4,7 @@ import { render } from "@react-email/render";
 import { ContactEmailManager } from "@/email/ContactEmailManager";
 import { connectToDatabase } from '@/lib/mongodb';
 import { ManagerRequestModel } from '@/models/ManagerRequest';
+import { UserModel } from '@/models/User';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -60,6 +61,19 @@ export async function POST(request) {
       problemImageUrl,
       status: 'pending'
     });
+
+    // Update user's phone number if they provided one and it's different from what's stored
+    try {
+      const user = await UserModel.findOne({ email });
+      if (user && phone && phone.trim() && (!user.phone || user.phone !== phone)) {
+        user.phone = phone;
+        await user.save();
+        console.log(`Updated phone number for user ${email}: ${phone}`);
+      }
+    } catch (phoneUpdateError) {
+      console.error('Error updating user phone number:', phoneUpdateError);
+      // Don't fail the request if phone update fails, just log it
+    }
 
     // Render the email template
     let emailHtml;

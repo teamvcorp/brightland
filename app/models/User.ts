@@ -14,6 +14,7 @@ const userSchema = new Schema<User>({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String },
+  phone: { type: String, default: '' }, // Phone number field
   role: { type: String, enum: ['user', 'admin'], default: 'user' }, // Updated role with admin option
   userType: { type: String, enum: ['tenant', 'property-owner'], required: true }, // Removed manager
   isVerified: { type: Boolean, default: false },

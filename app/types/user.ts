@@ -14,6 +14,7 @@ export interface User extends Document {
   name: string;
   email: string;
   password?: string;
+  phone?: string; // Phone number field
   isVerified: boolean;
   identityVerificationStatus: 'pending' | 'verified' | 'failed';
   defaultPaymentMethod?: string; // Optional field for default payment method
