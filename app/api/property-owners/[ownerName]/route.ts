@@ -5,7 +5,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/authOptions';
 
 // Add a property to a specific property owner
-export async function POST(req: Request, { params }: { params: { ownerName: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ ownerName: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -15,7 +15,8 @@ export async function POST(req: Request, { params }: { params: { ownerName: stri
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const ownerName = decodeURIComponent(params.ownerName);
+    const resolvedParams = await params;
+    const ownerName = decodeURIComponent(resolvedParams.ownerName);
     const propertyData = await req.json();
     
     const {
@@ -90,9 +91,10 @@ export async function POST(req: Request, { params }: { params: { ownerName: stri
 }
 
 // Get all properties for a specific owner
-export async function GET(req: Request, { params }: { params: { ownerName: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ ownerName: string }> }) {
   try {
-    const ownerName = decodeURIComponent(params.ownerName);
+    const resolvedParams = await params;
+    const ownerName = decodeURIComponent(resolvedParams.ownerName);
     
     await connectToDatabase();
     

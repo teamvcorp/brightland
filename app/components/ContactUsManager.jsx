@@ -2,23 +2,29 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { resRentalList, commRentalList, houseRentalList } from "../../public/data/data";
 
 export default function ContactUsManager() {
   const router = useRouter();
   const { data: session } = useSession();
   
-  // Get all property names from the data files
+  // Get all property names from the database
   const [propertyNames, setPropertyNames] = useState([]);
 
   useEffect(() => {
-    const allProperties = [
-      ...resRentalList,
-      ...commRentalList,
-      ...houseRentalList
-    ];
-    const names = allProperties.map(property => property.name).sort();
-    setPropertyNames(names);
+    const fetchProperties = async () => {
+      try {
+        const response = await fetch('/api/properties');
+        if (response.ok) {
+          const data = await response.json();
+          const names = data.map(property => property.name).sort();
+          setPropertyNames(names);
+        }
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+      }
+    };
+
+    fetchProperties();
   }, []);
 
   const [formData, setFormData] = useState({

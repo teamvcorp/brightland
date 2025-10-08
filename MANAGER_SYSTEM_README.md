@@ -5,7 +5,7 @@ This system allows tenants to submit maintenance requests through the `/managers
 ## Features
 
 ### For Tenants (/managers page)
-- Property address dropdown populated from `public/data/data.js`
+- Property address dropdown populated from **database** via `/api/properties`
 - Form validation and submission
 - Automatic email confirmation
 - Request tracking with status updates
@@ -85,10 +85,16 @@ The system sends automatic email notifications when:
 
 ## Adding New Properties
 
-To add new properties to the dropdown:
-1. Edit `public/data/data.js`
-2. Add new entries to `resRentalList`, `commRentalList`, or `houseRentalList`
-3. The dropdown will automatically update
+Properties are now managed through the admin interface with our clean database structure:
+
+1. Visit `/admin` page
+2. Click "Show Property Tools" 
+3. Click "Add New Property"
+4. Fill out the form with property details
+5. Select the property owner from dropdown
+6. Property is automatically added to the database in the clean embedded structure
+
+The dropdown automatically updates with all properties from the database.
 
 ## Troubleshooting
 

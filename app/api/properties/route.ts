@@ -18,7 +18,7 @@ export async function GET() {
     
     propertyOwners.forEach(owner => {
       if (owner.properties && owner.properties.length > 0) {
-        owner.properties.forEach(property => {
+        owner.properties.forEach((property: any) => {
           allProperties.push({
             ...property,
             ownerName: owner.name, // Add owner name for reference

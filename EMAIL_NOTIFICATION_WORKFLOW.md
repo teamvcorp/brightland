@@ -6,7 +6,7 @@ When an admin updates a maintenance request status and optionally uploads a fini
 ## Complete Workflow
 
 ### 1. Customer Submits Request (/managers page)
-- **Mobile-first form** with property dropdown populated from `data.js`
+- **Mobile-first form** with property dropdown populated from **database** via `/api/properties`
 - **Optional problem image upload** - stored in Vercel blob storage
 - Request saved to MongoDB with `problemImageUrl`
 - Email sent to management with problem details and image

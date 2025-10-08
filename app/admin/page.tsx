@@ -616,7 +616,6 @@ export default function AdminPage() {
   const [selectedRequest, setSelectedRequest] = useState<ManagerRequest | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [migrationStatus, setMigrationStatus] = useState<string>('');
   const [showPropertySection, setShowPropertySection] = useState(false);
   const [showAddPropertyForm, setShowAddPropertyForm] = useState(false);
   const [propertyOwners, setPropertyOwners] = useState<Array<{_id: string, name: string}>>([]);
@@ -692,24 +691,6 @@ export default function AdminPage() {
     );
   };
 
-  const handleMigrateData = async () => {
-    setMigrationStatus('Migrating data...');
-    try {
-      const response = await fetch('/api/admin/migrate-data', {
-        method: 'POST',
-      });
-      const data = await response.json();
-      
-      if (response.ok) {
-        setMigrationStatus(`✅ Success: ${data.propertiesCreated} properties migrated to database`);
-      } else {
-        setMigrationStatus(`❌ Error: ${data.message}`);
-      }
-    } catch (error) {
-      setMigrationStatus('❌ Error: Failed to migrate data');
-    }
-  };
-
   const openModal = (request: ManagerRequest) => {
     setSelectedRequest(request);
     setIsModalOpen(true);
@@ -777,30 +758,24 @@ export default function AdminPage() {
                   Add New Property
                 </button>
                 <button
-                  onClick={handleMigrateData}
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
-                  Migrate Static Data to Database
-                </button>
-                <button
                   onClick={() => window.open('/api/properties', '_blank')}
                   className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
                 >
                   View Properties API
                 </button>
+                <button
+                  onClick={() => window.open('/api/property-owners', '_blank')}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  View Property Owners API
+                </button>
               </div>
-              
-              {migrationStatus && (
-                <div className="p-3 bg-gray-50 rounded-md">
-                  <p className="text-sm font-medium text-gray-800">{migrationStatus}</p>
-                </div>
-              )}
               
               <div className="text-xs text-gray-500 space-y-1">
                 <p>• Add new properties to existing property owners using our clean embedded structure</p>
-                <p>• Migration will move any remaining static property data to the database</p>
-                <p>• Use Properties API to view current database contents</p>
+                <p>• Use APIs to view current database contents and verify data integrity</p>
                 <p>• New properties are automatically added to the selected property owner&apos;s embedded properties array</p>
+                <p>• Property management now fully database-driven with no static data dependencies</p>
               </div>
             </div>
           )}

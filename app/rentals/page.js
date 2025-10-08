@@ -1,7 +1,6 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation"; // Import useRouter for navigation
-import { resRentalList, commRentalList, houseRentalList } from "../../public/data/data"; // Adjust the import path as necessary
 
 // Reusable modal component for enlarged image
 const ImageModal = ({ isOpen, imageSrc, onClose }) => {
@@ -43,7 +42,7 @@ const ListingRow = ({ listing, showExtraAdult = true }) => {
   };
 
   const handleInquire = () => {
-    const listingType = listing.type || (houseRentalList.includes(listing) ? "house" : commRentalList.includes(listing) ? "commercial" : "residential");
+    const listingType = listing.type || "residential";
     router.push(`/contact?listingName=${encodeURIComponent(listing.name)}&listingType=${encodeURIComponent(listingType)}`);
   };
 
@@ -51,16 +50,16 @@ const ListingRow = ({ listing, showExtraAdult = true }) => {
     <>
       <tr className="bg-white border-b hover:bg-gray-100 transition-colors duration-200">
         <td className="py-4 px-6 font-medium text-gray-900">{listing.name}</td>
-        <td className="py-4 px-6">{listing.Sqft}</td>
-        <td className="py-4 px-6 text-gray-600">{listing.desc}</td>
-        <td className="py-4 px-6">${listing.rent.toLocaleString()}</td>
+        <td className="py-4 px-6">{listing.sqft}</td>
+        <td className="py-4 px-6 text-gray-600">{listing.description}</td>
+        <td className="py-4 px-6">${listing.rent?.toLocaleString()}</td>
         {showExtraAdult && (
-          <td className="py-4 px-6 hidden sm:table-cell">${listing.extraAdult}</td>
+          <td className="py-4 px-6 hidden sm:table-cell">${listing.extraAdult || 0}</td>
         )}
         <td className="py-4 px-6">
           <span
             className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
-              listing.status === "Available"
+              listing.status === "available"
                 ? "bg-green-100 text-green-800"
                 : "bg-red-100 text-red-800"
             }`}
@@ -115,9 +114,8 @@ const ListingTable = ({ title, listings, showExtraAdult = true }) => (
           </tr>
         </thead>
         <tbody>
-          {listings.map((listing, idx) => (
-            listing.status === "Rented" ? null :
-            <ListingRow key={listing.id || idx} listing={listing} showExtraAdult={showExtraAdult} />
+          {listings.filter(listing => listing.status === "available").map((listing, idx) => (
+            <ListingRow key={listing._id || idx} listing={listing} showExtraAdult={showExtraAdult} />
           ))}
         </tbody>
       </table>
@@ -126,6 +124,45 @@ const ListingTable = ({ title, listings, showExtraAdult = true }) => (
 );
 
 const Rentals = () => {
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch properties from API
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        const response = await fetch('/api/properties');
+        if (response.ok) {
+          const data = await response.json();
+          setProperties(data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, []);
+
+  // Filter properties by type
+  const getFilteredProperties = (type) => {
+    return properties.filter(property => property.type === type);
+  };
+
+  const resRentalList = getFilteredProperties('residential');
+  const commRentalList = getFilteredProperties('commercial');
+  const houseRentalList = getFilteredProperties('house');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <ListingTable
