@@ -14,9 +14,15 @@ export async function GET() {
 
     await connectToDatabase();
     
-    // Fetch all requests (admins see all, regular users see only their own)
+    // Fetch requests based on user type and role
     let query = {};
-    if (session.user.role !== 'admin') {
+    
+    // Admins see all requests
+    if (session.user.role === 'admin') {
+      query = {};
+    } 
+    // Property owners and tenants see only their own requests
+    else {
       query = { email: session.user.email };
     }
     

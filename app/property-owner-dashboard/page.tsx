@@ -51,6 +51,7 @@ export default function PropertyOwnerDashboard() {
         const response = await fetch('/api/manager-requests');
         if (response.ok) {
           const data = await response.json();
+          console.log('Fetched requests for property owner:', session.user.email, data);
           setRequests(data);
         } else {
           setError('Failed to load requests');
@@ -131,7 +132,7 @@ export default function PropertyOwnerDashboard() {
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-800">Your Maintenance Requests</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Track the status of all your submitted requests
+              Showing requests submitted by {session.user.email} • {requests.length} total
             </p>
           </div>
 
