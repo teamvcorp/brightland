@@ -2,23 +2,35 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { resRentalList, commRentalList, houseRentalList } from "../../public/data/data";
 
-export default function ContactUsManager() {
+export default function ContactUsPropertyOwner() {
   const router = useRouter();
   const { data: session } = useSession();
   
-  // Get all property names from the data files
+  // Get all property names from the database
   const [propertyNames, setPropertyNames] = useState([]);
+  const [loadingProperties, setLoadingProperties] = useState(true);
 
   useEffect(() => {
-    const allProperties = [
-      ...resRentalList,
-      ...commRentalList,
-      ...houseRentalList
-    ];
-    const names = allProperties.map(property => property.name).sort();
-    setPropertyNames(names);
+    // Load properties from the database
+    const loadProperties = async () => {
+      try {
+        const response = await fetch('/api/properties');
+        if (response.ok) {
+          const properties = await response.json();
+          const names = properties.map(property => property.name).sort();
+          setPropertyNames(names);
+        } else {
+          console.error('Failed to load properties');
+        }
+      } catch (error) {
+        console.error('Error loading properties:', error);
+      } finally {
+        setLoadingProperties(false);
+      }
+    };
+
+    loadProperties();
   }, []);
 
   const [formData, setFormData] = useState({
@@ -40,6 +52,7 @@ export default function ContactUsManager() {
       }));
     }
   }, [session]);
+
   const [problemImage, setProblemImage] = useState(null);
   const [problemImagePreview, setProblemImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -54,7 +67,7 @@ export default function ContactUsManager() {
       newErrors.email = "Valid email is required";
     if (!formData.phone.match(/^\+?[\d\s-]{10,}$/))
       newErrors.phone = "Valid phone number is required";
-    if (!formData.address.trim()) newErrors.address = "Address is required";
+    if (!formData.address.trim()) newErrors.address = "Property address is required";
     if (!formData.projectDescription.trim())
       newErrors.projectDescription = "Project description is required";
     if (!formData.message.trim()) newErrors.message = "Message is required";
@@ -130,6 +143,7 @@ export default function ContactUsManager() {
         const requestData = {
           ...formData,
           problemImageUrl,
+          userType: 'property-owner', // Indicate this is from a property owner
         };
 
         const res = await fetch("/api/resend/manager", {
@@ -171,10 +185,10 @@ export default function ContactUsManager() {
       <div className="mx-auto max-w-md lg:max-w-2xl">
         <div className="text-center mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            Request Maintenance
+            Property Owner Dashboard
           </h1>
           <p className="text-sm sm:text-base text-gray-600">
-            Submit a maintenance request for your property
+            Submit a maintenance request for your properties
           </p>
         </div>
         
@@ -283,24 +297,30 @@ export default function ContactUsManager() {
               >
                 Property Address <span className="text-red-500">*</span>
               </label>
-              <select
-                id="address"
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base ${
-                  errors.address ? "border-red-500" : "border-gray-300"
-                }`}
-                required
-                aria-describedby={errors.address ? "address-error" : undefined}
-              >
-                <option value="">Select your property...</option>
-                {propertyNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+              {loadingProperties ? (
+                <div className="w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                  Loading properties...
+                </div>
+              ) : (
+                <select
+                  id="address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  className={`w-full px-3 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base ${
+                    errors.address ? "border-red-500" : "border-gray-300"
+                  }`}
+                  required
+                  aria-describedby={errors.address ? "address-error" : undefined}
+                >
+                  <option value="">Select your property...</option>
+                  {propertyNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              )}
               {errors.address && (
                 <p id="address-error" className="text-red-500 text-xs sm:text-sm mt-1">
                   {errors.address}
@@ -420,9 +440,9 @@ export default function ContactUsManager() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isSubmitting || uploadingImage}
+            disabled={isSubmitting || uploadingImage || loadingProperties}
             className={`w-full py-3 sm:py-4 px-6 rounded-lg font-semibold text-white text-sm sm:text-base transition-colors ${
-              isSubmitting || uploadingImage
+              isSubmitting || uploadingImage || loadingProperties
                 ? "bg-blue-300 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700"
             }`}
@@ -431,7 +451,9 @@ export default function ContactUsManager() {
               ? "Uploading image..." 
               : isSubmitting 
                 ? "Submitting..." 
-                : "Submit Request"
+                : loadingProperties
+                  ? "Loading..."
+                  : "Submit Request"
             }
           </button>
         </form>

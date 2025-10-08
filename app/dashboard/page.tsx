@@ -26,6 +26,15 @@ export default function DashboardPage() {
     state: '',
     zip: '',
   });
+  const router = useRouter();
+
+  // Redirect managers to their dashboard
+  useEffect(() => {
+    if (session?.user?.userType === 'manager') {
+      router.push('/manager-dashboard');
+      return;
+    }
+  }, [session, router]);
 
   const [editingAddress, setEditingAddress] = useState(false);
   const [defaultPayment, setDefaultPayment] = useState<{
@@ -37,16 +46,6 @@ export default function DashboardPage() {
 
   const [clientSecret, setClientSecret] = useState('');
   const [showCardForm, setShowCardForm] = useState(false);
-
-  const router = useRouter();
-
-  useEffect(() => {
-    if (session?.user?.email) {
-      fetchCurrent40Percent();
-      fetchAddress();
-      fetchDefaultPaymentMethod();
-    }
-  }, [session]);
 
   const fetchCurrent40Percent = async () => {
     try {
@@ -62,6 +61,7 @@ export default function DashboardPage() {
       setError('Failed to fetch current 40%');
     }
   };
+
   const fetchAddress = async () => {
     try {
       const res = await fetch('/api/user/address', {
@@ -77,6 +77,30 @@ export default function DashboardPage() {
       console.error('Failed to fetch address');
     }
   };
+
+  const fetchDefaultPaymentMethod = async () => {
+    try {
+      const response = await fetch('/api/stripe/default-payment-method', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: session?.user?.email }),
+      });
+      const data = await response.json();
+      if (response.ok && data.paymentMethod) {
+        setDefaultPayment(data.paymentMethod);
+      }
+    } catch {
+      console.error('Failed to fetch default payment method');
+    }
+  };
+
+  useEffect(() => {
+    if (session?.user?.email) {
+      fetchCurrent40Percent();
+      fetchAddress();
+      fetchDefaultPaymentMethod();
+    }
+  }, [session?.user?.email]);
   const handleAddressChange = (field: string, value: string) => {
     setAddress(prev => ({ ...prev, [field]: value }));
   };
@@ -204,18 +228,7 @@ export default function DashboardPage() {
       return null;
     }
   }
-  const fetchDefaultPaymentMethod = async () => {
-    const res = await fetch('/api/stripe/default-payment-method', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: session?.user?.email }),
-    });
-    const data = await res.json();
-    if (res.ok && data.paymentMethod) {
-      const { brand, last4, exp_month, exp_year } = data.paymentMethod.card;
-      setDefaultPayment({ brand, last4, exp_month, exp_year });
-    }
-  };
+
   const handleStartUpdatePaymentMethod = async () => {
     const res = await fetch('/api/stripe/setup-intent', {
       method: 'POST',

@@ -23,12 +23,19 @@ export interface User extends Document {
   updatedAt: Date;
   current40Percent: number;
   role?: string;
+  userType: 'tenant' | 'property-owner'; // Removed manager
 
-  // ✅ New address field
+  // ✅ Address field - for tenants, selected property address
   address?: {
     street: string;
     city: string;
     state: string;
     zip: string;
   };
+
+  // ✅ Fields for tenants
+  selectedProperty?: string; // Property name they selected
+
+  // ✅ Fields for property owners
+  propertyOwnerName?: string; // Property owner business name
 }

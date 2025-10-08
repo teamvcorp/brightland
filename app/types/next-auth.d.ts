@@ -9,6 +9,9 @@ declare module "next-auth" {
       identityVerificationStatus?: string;
       stripeCustomerId?: string;
       role?: string;  // Optional role field
+      userType?: string;
+      selectedProperty?: string;
+      company?: string;
     } & DefaultSession["user"];
   }
 
@@ -19,6 +22,9 @@ declare module "next-auth" {
     defaultPaymentMethod?: string; // Optional field for default payment method
     stripeCustomerId?: string;
     role?: string;  // Optional role field
+    userType?: string;
+    selectedProperty?: string;
+    company?: string;
   }
 }
 
@@ -29,5 +35,8 @@ declare module "next-auth/jwt" {
     identityVerificationStatus?: string;
     stripeCustomerId?: string;
     role?: string;  // Optional role field
+    userType?: string;
+    selectedProperty?: string;
+    company?: string;
   }
 }

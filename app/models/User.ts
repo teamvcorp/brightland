@@ -15,6 +15,7 @@ const userSchema = new Schema<User>({
   email: { type: String, required: true, unique: true },
   password: { type: String },
   role: { type: String, enum: ['user', 'admin'], default: 'user' }, // Updated role with admin option
+  userType: { type: String, enum: ['tenant', 'property-owner'], required: true }, // Removed manager
   isVerified: { type: Boolean, default: false },
   identityVerificationStatus: { type: String, enum: ['pending', 'verified', 'failed'], default: 'pending' },
   payments: [paymentSchema],
@@ -22,13 +23,19 @@ const userSchema = new Schema<User>({
   current40Percent: { type: Number, default: 0 },
   defaultPaymentMethod: { type: String, default: null },
 
-  // ✅ New address field
+  // ✅ Address field - for tenants, selected property address
   address: {
     street: { type: String, default: '' },
     city: { type: String, default: '' },
     state: { type: String, default: '' },
     zip: { type: String, default: '' },
   },
+
+  // ✅ Fields for tenants
+  selectedProperty: { type: String, default: '' }, // Property name they selected
+
+  // ✅ Fields for property owners
+  propertyOwnerName: { type: String, default: '' }, // Property owner business name
 }, { timestamps: true });
 
 

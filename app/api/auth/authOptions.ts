@@ -46,6 +46,9 @@ const authOptions: NextAuthOptions = {
           isVerified: user.isVerified,
           identityVerificationStatus: user.identityVerificationStatus,
           stripeCustomerId: user.stripeCustomerId,
+          userType: user.userType,
+          selectedProperty: user.selectedProperty,
+          company: user.company,
           shouldRefreshSession: true,
         };
       },
@@ -59,6 +62,7 @@ const authOptions: NextAuthOptions = {
         dbUser = await UserModel.create({
           name: user.name,
           email: user.email,
+          userType: 'tenant', // Default for OAuth users, they can change later
           isVerified: false,
           identityVerificationStatus: 'pending',
         });
@@ -75,6 +79,9 @@ const authOptions: NextAuthOptions = {
       user.isVerified = dbUser.isVerified;
       user.identityVerificationStatus = dbUser.identityVerificationStatus;
       user.stripeCustomerId = dbUser.stripeCustomerId;
+      user.userType = dbUser.userType;
+      user.selectedProperty = dbUser.selectedProperty;
+      user.company = dbUser.company;
       return true;
     },
     async jwt({ token, user }) {
@@ -83,7 +90,9 @@ const authOptions: NextAuthOptions = {
         token.isVerified = user.isVerified;
         token.identityVerificationStatus = user.identityVerificationStatus;
         token.stripeCustomerId = user.stripeCustomerId;
-
+        token.userType = user.userType;
+        token.selectedProperty = user.selectedProperty;
+        token.company = user.company;
       }
       if ((user as any)?.shouldRefreshSession) {
         token.updatedAt = Date.now();
@@ -97,6 +106,9 @@ const authOptions: NextAuthOptions = {
         session.user.isVerified = token.isVerified as boolean;
         session.user.identityVerificationStatus = token.identityVerificationStatus as string;
         session.user.stripeCustomerId = token.stripeCustomerId as string;
+        session.user.userType = token.userType as string;
+        session.user.selectedProperty = token.selectedProperty as string;
+        session.user.company = token.company as string;
       }
       return session;
     },

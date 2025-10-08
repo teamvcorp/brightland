@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Image from 'next/image';
@@ -10,12 +10,57 @@ export default function SignUpPage() {
     name: '',
     email: '',
     password: '',
+    userType: 'tenant' as 'tenant' | 'property-owner',
+    selectedProperty: '',
+    propertyOwnerName: '',
+    isNewPropertyOwner: false,
   });
+  const [properties, setProperties] = useState<Array<{name: string, description: string}>>([]);
+  const [propertyOwners, setPropertyOwners] = useState<Array<{name: string}>>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Load all available properties and property owners on component mount
+  useEffect(() => {
+    // Load properties from database
+    const loadProperties = async () => {
+      try {
+        const response = await fetch('/api/properties');
+        if (response.ok) {
+          const dbProperties = await response.json();
+          setProperties(dbProperties.map((p: any) => ({ 
+            name: p.name, 
+            description: p.description 
+          })));
+        } else {
+          console.error('Failed to load properties from database');
+          setProperties([]);
+        }
+      } catch (error) {
+        console.error('Error loading properties:', error);
+        setProperties([]);
+      }
+    };
+
+    // Load property owners
+    const loadPropertyOwners = async () => {
+      try {
+        const response = await fetch('/api/property-owners');
+        if (response.ok) {
+          const owners = await response.json();
+          setPropertyOwners(owners);
+        }
+      } catch (error) {
+        console.error('Error loading property owners:', error);
+      }
+    };
+
+    loadProperties();
+    loadPropertyOwners();
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -47,7 +92,12 @@ export default function SignUpPage() {
         throw new Error(result.error);
       }
 
-      router.push('/dashboard');
+      // Route based on user type
+      if (formData.userType === 'property-owner') {
+        router.push('/property-owner-dashboard'); // We'll create this
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -141,6 +191,132 @@ export default function SignUpPage() {
                   </div>
                 </div>
 
+                <div>
+                  <label htmlFor="userType" className="block text-sm/6 font-medium text-gray-900">
+                    I am a...
+                  </label>
+                  <div className="mt-2">
+                    <select
+                      id="userType"
+                      name="userType"
+                      value={formData.userType}
+                      onChange={handleChange}
+                      required
+                      className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                    >
+                      <option value="tenant">Tenant (Renter)</option>
+                      <option value="property-owner">Property Owner</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Conditional field for tenants - property selection */}
+                {formData.userType === 'tenant' && (
+                  <div>
+                    <label htmlFor="selectedProperty" className="block text-sm/6 font-medium text-gray-900">
+                      Select Your Property
+                    </label>
+                    <div className="mt-2">
+                      <select
+                        id="selectedProperty"
+                        name="selectedProperty"
+                        value={formData.selectedProperty}
+                        onChange={handleChange}
+                        required
+                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                      >
+                        <option value="">Select a property...</option>
+                        {properties.map((property, index) => (
+                          <option key={index} value={property.name}>
+                            {property.name} - {property.description}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* Conditional fields for property owners */}
+                {formData.userType === 'property-owner' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm/6 font-medium text-gray-900 mb-2">
+                        Property Owner Registration
+                      </label>
+                      <div className="space-y-2">
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="isNewPropertyOwner"
+                            value="false"
+                            checked={!formData.isNewPropertyOwner}
+                            onChange={(e) => setFormData({ ...formData, isNewPropertyOwner: false, propertyOwnerName: '' })}
+                            className="mr-2"
+                          />
+                          <span className="text-sm text-gray-700">Select existing property owner</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="isNewPropertyOwner"
+                            value="true"
+                            checked={formData.isNewPropertyOwner}
+                            onChange={(e) => setFormData({ ...formData, isNewPropertyOwner: true, propertyOwnerName: '' })}
+                            className="mr-2"
+                          />
+                          <span className="text-sm text-gray-700">Register as new property owner</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {!formData.isNewPropertyOwner ? (
+                      <div>
+                        <label htmlFor="propertyOwnerName" className="block text-sm/6 font-medium text-gray-900">
+                          Select Property Owner
+                        </label>
+                        <div className="mt-2">
+                          <select
+                            id="propertyOwnerName"
+                            name="propertyOwnerName"
+                            value={formData.propertyOwnerName}
+                            onChange={handleChange}
+                            required
+                            className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                          >
+                            <option value="">Select an existing property owner...</option>
+                            {propertyOwners.map((owner, index) => (
+                              <option key={index} value={owner.name}>
+                                {owner.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <label htmlFor="propertyOwnerName" className="block text-sm/6 font-medium text-gray-900">
+                          New Property Owner Name
+                        </label>
+                        <div className="mt-2">
+                          <input
+                            id="propertyOwnerName"
+                            name="propertyOwnerName"
+                            type="text"
+                            value={formData.propertyOwnerName}
+                            onChange={handleChange}
+                            required
+                            placeholder="Enter property owner business name"
+                            className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                          />
+                        </div>
+                        <p className="mt-1 text-sm text-gray-500">
+                          This will create a new property owner record in the system.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {error && <p className="text-red-500 text-sm/6">{error}</p>}
 
                 <div>
@@ -196,10 +372,12 @@ export default function SignUpPage() {
         </div>
       </div>
       <div className="relative hidden w-0 flex-1 lg:block">
-        <img
+        <Image
           alt=""
           src="https://images.unsplash.com/photo-1496917756835-20cb06e75b4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1908&q=80"
           className="absolute inset-0 size-full object-cover"
+          fill
+          priority
         />
       </div>
     </div>

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 interface ManagerRequest {
   _id: string;
@@ -181,9 +182,11 @@ const RequestModal = ({
           {request.problemImageUrl && (
             <div>
               <h3 className="font-semibold text-gray-700 mb-2">Problem Image</h3>
-              <img
+              <Image
                 src={request.problemImageUrl}
                 alt="Problem reported"
+                width={384}
+                height={192}
                 className="w-full max-w-sm h-48 object-cover rounded-lg border"
               />
             </div>
@@ -235,9 +238,11 @@ const RequestModal = ({
                 />
                 {finishedImagePreview && (
                   <div className="relative">
-                    <img
+                    <Image
                       src={finishedImagePreview}
                       alt="Finished work preview"
+                      width={384}
+                      height={192}
                       className="w-full max-w-sm h-48 object-cover rounded-lg border"
                     />
                     {finishedImage && (
@@ -290,6 +295,318 @@ const RequestModal = ({
   );
 };
 
+// Property Form Component
+const AddPropertyForm = ({ 
+  isOpen, 
+  onClose, 
+  propertyOwners 
+}: { 
+  isOpen: boolean;
+  onClose: () => void;
+  propertyOwners: Array<{_id: string, name: string}>;
+}) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    type: '',
+    sqft: '',
+    description: '',
+    rent: '',
+    extraAdult: '',
+    amenities: '',
+    status: 'available',
+    picture: '',
+    propertyOwnerName: '',
+    address: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<string>('');
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus('');
+
+    try {
+      const response = await fetch('/api/properties', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          sqft: parseInt(formData.sqft),
+          rent: parseFloat(formData.rent),
+          extraAdult: formData.extraAdult ? parseInt(formData.extraAdult) : 0,
+          amenities: formData.amenities.split(',').map(a => a.trim()).filter(Boolean)
+        }),
+      });
+
+      if (response.ok) {
+        setSubmitStatus('✅ Property added successfully!');
+        setFormData({
+          name: '',
+          type: '',
+          sqft: '',
+          description: '',
+          rent: '',
+          extraAdult: '',
+          amenities: '',
+          status: 'available',
+          picture: '',
+          propertyOwnerName: '',
+          address: ''
+        });
+        setTimeout(() => {
+          setSubmitStatus('');
+          onClose();
+        }, 2000);
+      } else {
+        const errorData = await response.json();
+        setSubmitStatus(`❌ Error: ${errorData.message}`);
+      }
+    } catch (error) {
+      setSubmitStatus('❌ Error: Failed to add property');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex justify-between items-center">
+          <h2 className="text-lg sm:text-xl font-bold">Add New Property</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 p-1"
+          >
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-4 space-y-4">
+          {/* Property Owner Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Property Owner *
+            </label>
+            <select
+              name="propertyOwnerName"
+              value={formData.propertyOwnerName}
+              onChange={handleInputChange}
+              required
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select Property Owner</option>
+              {propertyOwners.map(owner => (
+                <option key={owner._id} value={owner.name}>
+                  {owner.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Basic Info */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Property Name *
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., Sunset Apartments Unit 1A"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type *
+              </label>
+              <select
+                name="type"
+                value={formData.type}
+                onChange={handleInputChange}
+                required
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select Type</option>
+                <option value="residential">Residential</option>
+                <option value="commercial">Commercial</option>
+                <option value="house">House</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Address *
+            </label>
+            <input
+              type="text"
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+              required
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Full property address"
+            />
+          </div>
+
+          {/* Size and Rent */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Square Feet *
+              </label>
+              <input
+                type="number"
+                name="sqft"
+                value={formData.sqft}
+                onChange={handleInputChange}
+                required
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="1200"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Monthly Rent *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="rent"
+                value={formData.rent}
+                onChange={handleInputChange}
+                required
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="1500.00"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Extra Adult Fee
+              </label>
+              <input
+                type="number"
+                name="extraAdult"
+                value={formData.extraAdult}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="50"
+              />
+            </div>
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="available">Available</option>
+              <option value="occupied">Occupied</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description *
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              required
+              rows={3}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Detailed description of the property..."
+            />
+          </div>
+
+          {/* Amenities */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Amenities *
+            </label>
+            <input
+              type="text"
+              name="amenities"
+              value={formData.amenities}
+              onChange={handleInputChange}
+              required
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="AC, Parking, Pool, Gym (comma separated)"
+            />
+            <p className="text-xs text-gray-500 mt-1">Separate amenities with commas</p>
+          </div>
+
+          {/* Picture URL */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Picture URL
+            </label>
+            <input
+              type="url"
+              name="picture"
+              value={formData.picture}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="https://example.com/property-image.jpg"
+            />
+          </div>
+
+          {/* Submit Status */}
+          {submitStatus && (
+            <div className="p-3 bg-gray-50 rounded-md">
+              <p className="text-sm font-medium text-gray-800">{submitStatus}</p>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:justify-end pt-4 border-t">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300"
+            >
+              {isSubmitting ? "Adding Property..." : "Add Property"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -299,6 +616,10 @@ export default function AdminPage() {
   const [selectedRequest, setSelectedRequest] = useState<ManagerRequest | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [migrationStatus, setMigrationStatus] = useState<string>('');
+  const [showPropertySection, setShowPropertySection] = useState(false);
+  const [showAddPropertyForm, setShowAddPropertyForm] = useState(false);
+  const [propertyOwners, setPropertyOwners] = useState<Array<{_id: string, name: string}>>([]);
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -314,6 +635,18 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchPropertyOwners = useCallback(async () => {
+    try {
+      const response = await fetch('/api/property-owners');
+      if (response.ok) {
+        const data = await response.json();
+        setPropertyOwners(data.propertyOwners || []);
+      }
+    } catch (error) {
+      console.error('Error fetching property owners:', error);
+    }
+  }, []);
+
   const checkAdminStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/check-admin');
@@ -325,11 +658,12 @@ export default function AdminPage() {
       }
       
       fetchRequests();
+      fetchPropertyOwners();
     } catch (error) {
       console.error('Error checking admin status:', error);
       router.push('/dashboard');
     }
-  }, [router, fetchRequests]);
+  }, [router, fetchRequests, fetchPropertyOwners]);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -356,6 +690,24 @@ export default function AdminPage() {
         req._id === updatedRequest._id ? updatedRequest : req
       )
     );
+  };
+
+  const handleMigrateData = async () => {
+    setMigrationStatus('Migrating data...');
+    try {
+      const response = await fetch('/api/admin/migrate-data', {
+        method: 'POST',
+      });
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMigrationStatus(`✅ Success: ${data.propertiesCreated} properties migrated to database`);
+      } else {
+        setMigrationStatus(`❌ Error: ${data.message}`);
+      }
+    } catch (error) {
+      setMigrationStatus('❌ Error: Failed to migrate data');
+    }
   };
 
   const openModal = (request: ManagerRequest) => {
@@ -397,8 +749,61 @@ export default function AdminPage() {
             Admin Dashboard
           </h1>
           <p className="text-sm sm:text-base text-gray-600">
-            Manage property maintenance requests
+            Manage property maintenance requests and system settings
           </p>
+        </div>
+
+        {/* Property Management Section */}
+        <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2 sm:mb-0">
+              Property Management
+            </h2>
+            <button
+              onClick={() => setShowPropertySection(!showPropertySection)}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              {showPropertySection ? 'Hide' : 'Show'} Property Tools
+            </button>
+          </div>
+          
+          {showPropertySection && (
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => setShowAddPropertyForm(true)}
+                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
+                >
+                  Add New Property
+                </button>
+                <button
+                  onClick={handleMigrateData}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  Migrate Static Data to Database
+                </button>
+                <button
+                  onClick={() => window.open('/api/properties', '_blank')}
+                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
+                >
+                  View Properties API
+                </button>
+              </div>
+              
+              {migrationStatus && (
+                <div className="p-3 bg-gray-50 rounded-md">
+                  <p className="text-sm font-medium text-gray-800">{migrationStatus}</p>
+                </div>
+              )}
+              
+              <div className="text-xs text-gray-500 space-y-1">
+                <p>• Add new properties to existing property owners using our clean embedded structure</p>
+                <p>• Migration will move any remaining static property data to the database</p>
+                <p>• Use Properties API to view current database contents</p>
+                <p>• New properties are automatically added to the selected property owner&apos;s embedded properties array</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Status Filter Tabs */}
@@ -534,6 +939,12 @@ export default function AdminPage() {
           isOpen={isModalOpen}
           onClose={closeModal}
           onUpdate={handleRequestUpdate}
+        />
+
+        <AddPropertyForm
+          isOpen={showAddPropertyForm}
+          onClose={() => setShowAddPropertyForm(false)}
+          propertyOwners={propertyOwners}
         />
       </div>
     </div>
