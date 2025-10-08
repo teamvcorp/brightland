@@ -11,7 +11,7 @@ export async function GET() {
     const connection = await connectToDatabase();
     console.log('Database connected successfully');
     
-    let propertyOwners;
+    let propertyOwners: any[] = [];
     
     try {
       // First try using the Mongoose model
@@ -38,7 +38,8 @@ export async function GET() {
       console.error('Mongoose model error, falling back to direct query:', modelError);
       // Fallback to direct database query
       const db = connection.connection.db;
-      propertyOwners = await db?.collection('propertyowners').find({}).sort({ name: 1 }).toArray();
+      const directResult = await db?.collection('propertyowners').find({}).sort({ name: 1 }).toArray();
+      propertyOwners = directResult || [];
       console.log('Fallback direct query found:', propertyOwners?.length || 0, 'property owners');
     }
 
