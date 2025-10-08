@@ -11,6 +11,7 @@ const RentalApplicationContent = () => {
   const [formData, setFormData] = useState({
     listingName: "",
     listingType: "",
+    userPhone: "",
     employment: "",
     employer: "",
     monthlyIncome: "",
@@ -33,9 +34,10 @@ const RentalApplicationContent = () => {
     setFormData(prev => ({
       ...prev,
       listingName,
-      listingType
+      listingType,
+      userPhone: session?.user?.phone || ''
     }));
-  }, [searchParams]);
+  }, [searchParams, session]);
 
   // Redirect if not authenticated or not a tenant
   useEffect(() => {
@@ -64,7 +66,7 @@ const RentalApplicationContent = () => {
     e.preventDefault();
     
     // Validate required fields
-    const requiredFields = ['employment', 'employer', 'monthlyIncome', 'socialSecurityLastFour', 'referenceName', 'referencePhone', 'referenceRelation', 'moveInDate'];
+    const requiredFields = ['userPhone', 'employment', 'employer', 'monthlyIncome', 'socialSecurityLastFour', 'referenceName', 'referencePhone', 'referenceRelation', 'moveInDate'];
     const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
     
     if (missingFields.length > 0) {
@@ -101,7 +103,7 @@ const RentalApplicationContent = () => {
           ...formData,
           userEmail: session?.user?.email,
           userName: session?.user?.name,
-          userPhone: session?.user?.phone || '',
+          userPhone: formData.userPhone,
         }),
       });
 
@@ -180,7 +182,22 @@ const RentalApplicationContent = () => {
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Applicant Information</h3>
           <p><strong>Name:</strong> {session.user.name}</p>
           <p><strong>Email:</strong> {session.user.email}</p>
-          {session.user.phone && <p><strong>Phone:</strong> {session.user.phone}</p>}
+          
+          <div className="mt-4">
+            <label htmlFor="userPhone" className="block text-sm font-medium text-gray-700 mb-2">
+              Phone Number *
+            </label>
+            <input
+              type="tel"
+              id="userPhone"
+              name="userPhone"
+              value={formData.userPhone}
+              onChange={handleInputChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="(555) 123-4567"
+            />
+          </div>
         </div>
 
         {!showPayment ? (
