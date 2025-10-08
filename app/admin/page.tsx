@@ -20,6 +20,32 @@ interface ManagerRequest {
   finishedImageUrl?: string;
 }
 
+interface RentalApplication {
+  _id: string;
+  listingName: string;
+  listingType: string;
+  userEmail: string;
+  userName: string;
+  userPhone: string;
+  employment: string;
+  employer: string;
+  monthlyIncome: string;
+  socialSecurityLastFour: string;
+  referenceName: string;
+  referencePhone: string;
+  referenceRelation: string;
+  moveInDate: string;
+  additionalInfo?: string;
+  status: 'pending' | 'approved' | 'denied';
+  paymentStatus: 'pending' | 'paid' | 'failed';
+  applicationFee: number;
+  paymentIntentId?: string;
+  paidAt?: Date;
+  createdAt: string;
+  updatedAt: string;
+  adminNotes?: string;
+}
+
 const StatusBadge = ({ status }: { status: string }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -288,6 +314,220 @@ const RequestModal = ({
                 ? "Updating..." 
                 : "Update Request"
             }
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Rental Application Modal Component
+const RentalApplicationModal = ({ 
+  application, 
+  isOpen, 
+  onClose, 
+  onUpdate 
+}: { 
+  application: RentalApplication | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdate: (application: RentalApplication) => void;
+}) => {
+  const [status, setStatus] = useState<'pending' | 'approved' | 'denied'>('pending');
+  const [adminNotes, setAdminNotes] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  useEffect(() => {
+    if (application) {
+      setStatus(application.status);
+      setAdminNotes(application.adminNotes || '');
+    }
+  }, [application]);
+
+  const handleUpdate = async () => {
+    if (!application) return;
+    
+    setIsUpdating(true);
+    try {
+      const response = await fetch('/api/rental-application', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          applicationId: application._id,
+          status, 
+          adminNotes 
+        }),
+      });
+
+      if (response.ok) {
+        const updatedApplication = { ...application, status, adminNotes, updatedAt: new Date().toISOString() };
+        onUpdate(updatedApplication);
+        onClose();
+      } else {
+        alert('Failed to update application');
+      }
+    } catch (error) {
+      console.error('Error updating application:', error);
+      alert('Error updating application');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  if (!isOpen || !application) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex justify-between items-center">
+          <h2 className="text-lg sm:text-xl font-bold">Rental Application Details</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 p-1"
+          >
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-4 sm:px-6 py-4 space-y-6">
+          {/* Application Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="font-semibold text-gray-700 mb-3">Property Information</h3>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                <p><strong>Property:</strong> {application.listingName}</p>
+                <p><strong>Type:</strong> {application.listingType}</p>
+                <p><strong>Desired Move-in:</strong> {new Date(application.moveInDate).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-gray-700 mb-3">Applicant Information</h3>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                <p><strong>Name:</strong> {application.userName}</p>
+                <p><strong>Email:</strong> {application.userEmail}</p>
+                <p><strong>Phone:</strong> {application.userPhone}</p>
+                <p><strong>Submitted:</strong> {new Date(application.createdAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Employment Information */}
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-3">Employment & Financial Information</h3>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <p><strong>Employment Status:</strong> {application.employment}</p>
+                <p><strong>Employer:</strong> {application.employer}</p>
+                <p><strong>Monthly Income:</strong> ${Number(application.monthlyIncome).toLocaleString()}</p>
+                <p><strong>SSN Last 4:</strong> ****{application.socialSecurityLastFour}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Reference Information */}
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-3">Reference Information</h3>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <p><strong>Name:</strong> {application.referenceName}</p>
+                <p><strong>Phone:</strong> {application.referencePhone}</p>
+                <p><strong>Relationship:</strong> {application.referenceRelation}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Information */}
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-3">Payment Information</h3>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <p><strong>Application Fee:</strong> ${application.applicationFee}</p>
+                <p><strong>Payment Status:</strong> 
+                  <span className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold ${
+                    application.paymentStatus === 'paid' 
+                      ? 'bg-green-100 text-green-800' 
+                      : application.paymentStatus === 'failed'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {application.paymentStatus.charAt(0).toUpperCase() + application.paymentStatus.slice(1)}
+                  </span>
+                </p>
+                {application.paidAt && (
+                  <p><strong>Paid Date:</strong> {new Date(application.paidAt).toLocaleDateString()}</p>
+                )}
+              </div>
+              {application.paymentIntentId && (
+                <p><strong>Payment ID:</strong> {application.paymentIntentId}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Additional Information */}
+          {application.additionalInfo && (
+            <div>
+              <h3 className="font-semibold text-gray-700 mb-3">Additional Information</h3>
+              <div className="bg-gray-50 rounded-lg p-4 text-sm">
+                <p>{application.additionalInfo}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Admin Controls */}
+          <div className="border-t pt-6">
+            <h3 className="font-semibold text-gray-700 mb-3">Admin Actions</h3>
+            
+            {/* Status Update */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Application Status
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as 'pending' | 'approved' | 'denied')}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="pending">Pending Review</option>
+                <option value="approved">Approved</option>
+                <option value="denied">Denied</option>
+              </select>
+            </div>
+
+            {/* Admin Notes */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Admin Notes (Internal)
+              </label>
+              <textarea
+                value={adminNotes}
+                onChange={(e) => setAdminNotes(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                placeholder="Add internal notes about this application..."
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="sticky bottom-0 bg-white border-t px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3 sm:justify-end">
+          <button
+            onClick={onClose}
+            className="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleUpdate}
+            disabled={isUpdating}
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300"
+          >
+            {isUpdating ? "Updating..." : "Update Application"}
           </button>
         </div>
       </div>
@@ -772,6 +1012,13 @@ export default function AdminPage() {
   const [selectedOwnerFilter, setSelectedOwnerFilter] = useState<string>('all');
   const [allProperties, setAllProperties] = useState<any[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<any[]>([]);
+  
+  // Rental Application states
+  const [rentalApplications, setRentalApplications] = useState<RentalApplication[]>([]);
+  const [filteredApplications, setFilteredApplications] = useState<RentalApplication[]>([]);
+  const [selectedApplication, setSelectedApplication] = useState<RentalApplication | null>(null);
+  const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+  const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -817,6 +1064,18 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchRentalApplications = useCallback(async () => {
+    try {
+      const response = await fetch('/api/rental-application');
+      if (response.ok) {
+        const data = await response.json();
+        setRentalApplications(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching rental applications:', error);
+    }
+  }, []);
+
   const checkAdminStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/check-admin');
@@ -830,11 +1089,12 @@ export default function AdminPage() {
       fetchRequests();
       fetchPropertyOwners();
       fetchProperties();
+      fetchRentalApplications();
     } catch (error) {
       console.error('Error checking admin status:', error);
       router.push('/dashboard');
     }
-  }, [router, fetchRequests, fetchPropertyOwners, fetchProperties]);
+  }, [router, fetchRequests, fetchPropertyOwners, fetchProperties, fetchRentalApplications]);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -864,10 +1124,27 @@ export default function AdminPage() {
     }
   }, [allProperties, selectedOwnerFilter]);
 
+  // Filter rental applications by status
+  useEffect(() => {
+    if (applicationStatusFilter === 'all') {
+      setFilteredApplications(rentalApplications);
+    } else {
+      setFilteredApplications(rentalApplications.filter(app => app.status === applicationStatusFilter));
+    }
+  }, [rentalApplications, applicationStatusFilter]);
+
   const handleRequestUpdate = (updatedRequest: ManagerRequest) => {
     setRequests(prev => 
       prev.map(req => 
         req._id === updatedRequest._id ? updatedRequest : req
+      )
+    );
+  };
+
+  const handleApplicationUpdate = (updatedApplication: RentalApplication) => {
+    setRentalApplications(prev => 
+      prev.map(app => 
+        app._id === updatedApplication._id ? updatedApplication : app
       )
     );
   };
@@ -923,6 +1200,16 @@ export default function AdminPage() {
     setIsModalOpen(false);
   };
 
+  const openApplicationModal = (application: RentalApplication) => {
+    setSelectedApplication(application);
+    setIsApplicationModalOpen(true);
+  };
+
+  const closeApplicationModal = () => {
+    setSelectedApplication(null);
+    setIsApplicationModalOpen(false);
+  };
+
   if (status === 'loading' || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -938,6 +1225,15 @@ export default function AdminPage() {
       working: requests.filter(r => r.status === 'working').length,
       finished: requests.filter(r => r.status === 'finished').length,
       rejected: requests.filter(r => r.status === 'rejected').length,
+    };
+  };
+
+  const getApplicationStatusCounts = () => {
+    return {
+      all: rentalApplications.length,
+      pending: rentalApplications.filter(a => a.status === 'pending').length,
+      approved: rentalApplications.filter(a => a.status === 'approved').length,
+      denied: rentalApplications.filter(a => a.status === 'denied').length,
     };
   };
 
@@ -1066,6 +1362,218 @@ export default function AdminPage() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* Rental Applications Management Section */}
+        <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2 sm:mb-0">
+              Rental Applications ({filteredApplications.length} applications)
+            </h2>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <select
+                value={applicationStatusFilter}
+                onChange={(e) => setApplicationStatusFilter(e.target.value)}
+                className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
+                <option value="all">All Applications</option>
+                <option value="pending">Pending Review</option>
+                <option value="approved">Approved</option>
+                <option value="denied">Denied</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Application Status Summary */}
+          <div className="mb-4">
+            <div className="flex flex-wrap gap-2 bg-gray-50 p-3 rounded-lg">
+              {[
+                { key: 'all', label: 'Total', count: getApplicationStatusCounts().all },
+                { key: 'pending', label: 'Pending', count: getApplicationStatusCounts().pending },
+                { key: 'approved', label: 'Approved', count: getApplicationStatusCounts().approved },
+                { key: 'denied', label: 'Denied', count: getApplicationStatusCounts().denied },
+              ].map((stat) => (
+                <div key={stat.key} className="bg-white px-3 py-2 rounded-md border text-center">
+                  <div className="text-sm font-medium text-gray-900">{stat.count}</div>
+                  <div className="text-xs text-gray-500">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Applications Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left text-gray-600">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th scope="col" className="py-3 px-4">Date</th>
+                  <th scope="col" className="py-3 px-4">Applicant</th>
+                  <th scope="col" className="py-3 px-4">Property</th>
+                  <th scope="col" className="py-3 px-4">Income</th>
+                  <th scope="col" className="py-3 px-4">Payment</th>
+                  <th scope="col" className="py-3 px-4">Status</th>
+                  <th scope="col" className="py-3 px-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredApplications.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-gray-500">
+                      No rental applications found
+                      {applicationStatusFilter !== 'all' ? ` for ${applicationStatusFilter} status` : ''}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredApplications.map((application) => (
+                    <tr key={application._id} className="bg-white border-b hover:bg-gray-50">
+                      <td className="py-4 px-4">
+                        {new Date(application.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div>
+                          <div className="font-medium text-gray-900">{application.userName}</div>
+                          <div className="text-xs text-gray-500">{application.userEmail}</div>
+                          <div className="text-xs text-gray-500">{application.userPhone}</div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div>
+                          <div className="font-medium">{application.listingName}</div>
+                          <div className="text-xs text-gray-500 capitalize">{application.listingType}</div>
+                          <div className="text-xs text-gray-500">Move-in: {new Date(application.moveInDate).toLocaleDateString()}</div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div>
+                          <div className="font-medium">${Number(application.monthlyIncome).toLocaleString()}</div>
+                          <div className="text-xs text-gray-500">{application.employment}</div>
+                          <div className="text-xs text-gray-500">{application.employer}</div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div>
+                          <div className="font-medium">${application.applicationFee}</div>
+                          <span
+                            className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
+                              application.paymentStatus === "paid"
+                                ? "bg-green-100 text-green-800"
+                                : application.paymentStatus === "failed"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {application.paymentStatus.charAt(0).toUpperCase() + application.paymentStatus.slice(1)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span
+                          className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
+                            application.status === "approved"
+                              ? "bg-green-100 text-green-800"
+                              : application.status === "denied"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <button
+                          onClick={() => openApplicationModal(application)}
+                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                        >
+                          Review
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Approved Renters Section */}
+        <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2 sm:mb-0">
+              Approved Renters ({rentalApplications.filter(app => app.status === 'approved').length} approved)
+            </h2>
+          </div>
+          
+          {/* Approved Renters List */}
+          <div className="overflow-x-auto">
+            {rentalApplications.filter(app => app.status === 'approved').length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No approved rental applications yet.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {rentalApplications
+                  .filter(app => app.status === 'approved')
+                  .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                  .map((application) => (
+                    <div key={application._id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{application.userName}</h3>
+                          <p className="text-sm text-gray-600">{application.userEmail}</p>
+                          <p className="text-sm text-gray-600">{application.userPhone}</p>
+                        </div>
+                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold">
+                          Approved
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <strong>Property:</strong> {application.listingName}
+                          <span className="text-gray-500 ml-2 capitalize">({application.listingType})</span>
+                        </div>
+                        
+                        <div>
+                          <strong>Move-in Date:</strong> {new Date(application.moveInDate).toLocaleDateString()}
+                        </div>
+                        
+                        <div>
+                          <strong>Monthly Income:</strong> ${Number(application.monthlyIncome).toLocaleString()}
+                        </div>
+                        
+                        <div>
+                          <strong>Employer:</strong> {application.employer}
+                          <span className="text-gray-500 ml-2">({application.employment})</span>
+                        </div>
+                        
+                        <div>
+                          <strong>Reference:</strong> {application.referenceName}
+                          <div className="text-gray-600 text-xs">
+                            {application.referencePhone} • {application.referenceRelation}
+                          </div>
+                        </div>
+                        
+                        <div className="pt-2 border-t">
+                          <div className="flex justify-between text-xs text-gray-500">
+                            <span>Applied: {new Date(application.createdAt).toLocaleDateString()}</span>
+                            <span>Approved: {new Date(application.updatedAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3 pt-3 border-t">
+                        <button
+                          onClick={() => openApplicationModal(application)}
+                          className="w-full text-center text-blue-600 hover:text-blue-800 font-medium text-sm"
+                        >
+                          View Full Application
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1202,6 +1710,13 @@ export default function AdminPage() {
           isOpen={isModalOpen}
           onClose={closeModal}
           onUpdate={handleRequestUpdate}
+        />
+
+        <RentalApplicationModal
+          application={selectedApplication}
+          isOpen={isApplicationModalOpen}
+          onClose={closeApplicationModal}
+          onUpdate={handleApplicationUpdate}
         />
 
         <PropertyForm

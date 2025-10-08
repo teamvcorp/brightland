@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import Image from 'next/image';
 
-export default function SignUpPage() {
+const SignUpContent = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -20,6 +20,10 @@ export default function SignUpPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get callback URL from search params
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
 
   // Load all available properties and property owners on component mount
   useEffect(() => {
@@ -133,9 +137,12 @@ export default function SignUpPage() {
         throw new Error(result.error);
       }
 
-      // Route based on user type
+      // Route based on user type and callback URL
       if (formData.userType === 'property-owner') {
-        router.push('/property-owner-dashboard'); // We'll create this
+        router.push('/property-owner-dashboard');
+      } else if (callbackUrl && callbackUrl !== '/dashboard') {
+        // If there's a specific callback URL (like rental application), use it
+        router.push(callbackUrl);
       } else {
         router.push('/dashboard');
       }
@@ -148,7 +155,7 @@ export default function SignUpPage() {
 
   const handleGoogleSignUp = async () => {
     try {
-      await signIn('google', { callbackUrl: '/dashboard' });
+      await signIn('google', { callbackUrl: callbackUrl });
     } catch (err: any) {
       setError(err.message || 'Google sign-up failed');
     }
@@ -422,5 +429,17 @@ export default function SignUpPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <SignUpContent />
+    </Suspense>
   );
 }

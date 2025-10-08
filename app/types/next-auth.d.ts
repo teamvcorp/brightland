@@ -5,6 +5,7 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
+      phone?: string;
       isVerified?: boolean;
       identityVerificationStatus?: string;
       stripeCustomerId?: string;
@@ -17,6 +18,7 @@ declare module "next-auth" {
 
   interface User extends NextAuthUser {
     id: string;
+    phone?: string;
     isVerified?: boolean;
     identityVerificationStatus?: string;
     defaultPaymentMethod?: string; // Optional field for default payment method
@@ -31,6 +33,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT extends DefaultJWT {
     id: string;
+    phone?: string;
     isVerified?: boolean;
     identityVerificationStatus?: string;
     stripeCustomerId?: string;

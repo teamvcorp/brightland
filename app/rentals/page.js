@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation"; // Import useRouter for navigation
+import { useSession } from "next-auth/react"; // Add session hook
 import Image from "next/image";
 
 // Reusable modal component for enlarged image
@@ -32,7 +33,7 @@ const ImageModal = ({ isOpen, imageSrc, onClose }) => {
 };
 
 // Reusable table row component
-const ListingRow = ({ listing, showExtraAdult = true }) => {
+const ListingRow = ({ listing, showExtraAdult = true, session }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
 
@@ -46,7 +47,22 @@ const ListingRow = ({ listing, showExtraAdult = true }) => {
 
   const handleInquire = () => {
     const listingType = listing.type || "residential";
-    router.push(`/contact?listingName=${encodeURIComponent(listing.name)}&listingType=${encodeURIComponent(listingType)}`);
+    
+    // Check if user is logged in and is a tenant
+    if (!session?.user) {
+      // Not logged in - redirect to signup with return URL
+      router.push(`/signup?callbackUrl=${encodeURIComponent(`/rental-application?listingName=${encodeURIComponent(listing.name)}&listingType=${encodeURIComponent(listingType)}`)}`);
+      return;
+    }
+    
+    // Check if user is a tenant (not a property owner)
+    if (session.user.userType === 'property-owner') {
+      alert('Property owners cannot submit rental applications. Please sign in with a tenant account.');
+      return;
+    }
+    
+    // User is logged in as tenant - proceed to application form
+    router.push(`/rental-application?listingName=${encodeURIComponent(listing.name)}&listingType=${encodeURIComponent(listingType)}`);
   };
 
   return (
@@ -102,7 +118,7 @@ const ListingRow = ({ listing, showExtraAdult = true }) => {
 };
 
 // Reusable table component
-const ListingTable = ({ title, listings, showExtraAdult = true }) => {
+const ListingTable = ({ title, listings, showExtraAdult = true, session }) => {
   const availableListings = listings.filter(listing => listing.status === "available");
   
   return (
@@ -133,7 +149,7 @@ const ListingTable = ({ title, listings, showExtraAdult = true }) => {
             </thead>
             <tbody>
               {availableListings.map((listing, idx) => (
-                <ListingRow key={listing._id || idx} listing={listing} showExtraAdult={showExtraAdult} />
+                <ListingRow key={listing._id || idx} listing={listing} showExtraAdult={showExtraAdult} session={session} />
               ))}
             </tbody>
           </table>
@@ -144,6 +160,7 @@ const ListingTable = ({ title, listings, showExtraAdult = true }) => {
 };
 
 const Rentals = () => {
+  const { data: session } = useSession(); // Add session hook
   const [properties, setProperties] = useState([]);
   const [propertyOwners, setPropertyOwners] = useState([]);
   const [selectedOwner, setSelectedOwner] = useState('all');
@@ -270,12 +287,14 @@ const Rentals = () => {
         title="House Listings"
         listings={houseRentalList}
         showExtraAdult={true}
+        session={session}
       />
       <div className="mb-8">
         <ListingTable
           title="Residential Listings"
           listings={resRentalList}
           showExtraAdult={true}
+          session={session}
         />
         <p className="text-center text-gray-600 py-4 bg-white rounded-b-xl">
           Amenities: Apartment includes Highspeed internet, onsite laundry, water and sewer
@@ -285,6 +304,7 @@ const Rentals = () => {
         title="Commercial Listings"
         listings={commRentalList}
         showExtraAdult={false}
+        session={session}
       />
     </div>
   );

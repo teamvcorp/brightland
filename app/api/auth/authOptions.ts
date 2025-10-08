@@ -53,6 +53,7 @@ const authOptions: NextAuthOptions = {
           id: user._id.toString(),
           name: user.name,
           email: user.email,
+          phone: user.phone,
           isVerified: user.isVerified,
           identityVerificationStatus: user.identityVerificationStatus,
           stripeCustomerId: user.stripeCustomerId,
@@ -98,6 +99,7 @@ const authOptions: NextAuthOptions = {
         }
       }
       user.id = dbUser._id.toString();
+      user.phone = dbUser.phone;
       user.isVerified = dbUser.isVerified;
       user.identityVerificationStatus = dbUser.identityVerificationStatus;
       user.stripeCustomerId = dbUser.stripeCustomerId;
@@ -110,6 +112,7 @@ const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.phone = user.phone;
         token.isVerified = user.isVerified;
         token.identityVerificationStatus = user.identityVerificationStatus;
         token.stripeCustomerId = user.stripeCustomerId;
@@ -127,6 +130,7 @@ const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.phone = token.phone as string;
         session.user.isVerified = token.isVerified as boolean;
         session.user.identityVerificationStatus = token.identityVerificationStatus as string;
         session.user.stripeCustomerId = token.stripeCustomerId as string;
