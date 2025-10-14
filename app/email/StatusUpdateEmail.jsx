@@ -1,5 +1,4 @@
-import { Html, Head, Body, Container, Section, Heading, Text } from "@react-email/components";
-import Image from 'next/image';
+import { Html, Head, Body, Container, Section, Heading, Text, Img } from "@react-email/components";
 
 export const StatusUpdateEmail = ({ fullname, address, projectDescription, oldStatus, newStatus, adminNotes, finishedImageUrl }) => (
   <Html>
@@ -31,11 +30,10 @@ export const StatusUpdateEmail = ({ fullname, address, projectDescription, oldSt
           {finishedImageUrl && newStatus === 'finished' && (
             <>
               <Text><strong>Completed Work Photo:</strong></Text>
-              <Image 
+              <Img 
                 src={finishedImageUrl} 
                 alt="Completed maintenance work" 
-                width={400}
-                height={300}
+                width="400"
                 style={{ maxWidth: "400px", height: "auto", border: "1px solid #ddd", borderRadius: "5px" }}
               />
             </>
@@ -43,11 +41,10 @@ export const StatusUpdateEmail = ({ fullname, address, projectDescription, oldSt
           {finishedImageUrl && newStatus === 'working' && (
             <>
               <Text><strong>Work Progress Photo:</strong></Text>
-              <Image 
+              <Img 
                 src={finishedImageUrl} 
                 alt="Maintenance work in progress" 
-                width={400}
-                height={300}
+                width="400"
                 style={{ maxWidth: "400px", height: "auto", border: "1px solid #ddd", borderRadius: "5px" }}
               />
             </>

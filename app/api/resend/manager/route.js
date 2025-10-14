@@ -16,7 +16,9 @@ export async function POST(request) {
   try {
     await connectToDatabase();
     
-    const { fullname, email, phone, address, projectDescription, message, problemImageUrl } = await request.json();
+    const { fullname, email, phone, address, projectDescription, message, problemImageUrl, userType } = await request.json();
+
+    console.log('Received request from:', userType || 'tenant', '- Email:', email);
 
     if (!fullname || !email || !phone || !address || !projectDescription || !message) {
       return NextResponse.json(
@@ -78,6 +80,17 @@ export async function POST(request) {
     // Render the email template
     let emailHtml;
     try {
+        console.log('Rendering email with data:', {
+          fullname,
+          email,
+          phone,
+          address,
+          projectDescription,
+          message,
+          problemImageUrl: problemImageUrl ? 'present' : 'none',
+          userType
+        });
+
         emailHtml = await render(
         <ContactEmailManager
           fullname={fullname}
@@ -89,7 +102,9 @@ export async function POST(request) {
           problemImageUrl={problemImageUrl}
         />,
         { pretty: true } // Formats HTML for better readability
-      );      // Validate that emailHtml is a string
+      );      
+      
+      // Validate that emailHtml is a string
       if (typeof emailHtml !== "string" || emailHtml.trim() === "") {
         console.error("Invalid emailHtml:", emailHtml);
         return NextResponse.json(
@@ -106,13 +121,22 @@ export async function POST(request) {
     }
 
     // Log the rendered HTML for debugging
-    console.log("Rendered emailHtml:", emailHtml.substring(0, 200)); // Log first 200 chars to avoid clutter
+    console.log("Rendered emailHtml length:", emailHtml.length, "characters");
+    console.log("First 200 chars:", emailHtml.substring(0, 200));
+
+    // Determine email subject based on user type
+    const isPropertyOwner = userType === 'property-owner';
+    const emailSubject = isPropertyOwner 
+      ? `Property Owner Maintenance Request - ${address}`
+      : `Tenant Maintenance Request - ${address}`;
+
+    console.log('Sending email with subject:', emailSubject);
 
     // Send email via Resend
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || "contact@your-domain.com",
       to: process.env.RESEND_TO_EMAIL || "your-receiving-email@domain.com",
-      subject: "Contact Form Submission",
+      subject: emailSubject,
       html: emailHtml,
     });
 

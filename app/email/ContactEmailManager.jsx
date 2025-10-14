@@ -1,5 +1,4 @@
-import { Html, Head, Body, Container, Section, Heading, Text } from "@react-email/components";
-import Image from 'next/image';
+import { Html, Head, Body, Container, Section, Heading, Text, Img } from "@react-email/components";
 
 export const ContactEmailManager = ({ fullname, email, phone, address, projectDescription, message, problemImageUrl }) => (
   <Html>
@@ -8,7 +7,7 @@ export const ContactEmailManager = ({ fullname, email, phone, address, projectDe
       <Container style={{ maxWidth: "600px", padding: "20px" }}>
         <Section style={{ background: "#f8f8f8", padding: "15px", textAlign: "center" }}>
           <Heading style={{ color: "#1a73e8" }}>
-            Manager Repair Form Submission
+            Maintenance Request Submission
           </Heading>
         </Section>
         <Section style={{ padding: "20px", border: "1px solid #ddd", borderRadius: "5px" }}>
@@ -21,18 +20,17 @@ export const ContactEmailManager = ({ fullname, email, phone, address, projectDe
           {problemImageUrl && (
             <>
               <Text><strong>Problem Image:</strong></Text>
-              <Image 
+              <Img 
                 src={problemImageUrl} 
-                alt="Problem reported by tenant" 
-                width={400}
-                height={300}
+                alt="Problem reported" 
+                width="400"
                 style={{ maxWidth: "400px", height: "auto", border: "1px solid #ddd", borderRadius: "5px" }}
               />
             </>
           )}
         </Section>
         <Text style={{ textAlign: "center", fontSize: "12px", color: "#777", marginTop: "20px" }}>
-          Sent from Your Website Contact Form
+          Sent from Brightland Properties Maintenance System
         </Text>
       </Container>
     </Body>

@@ -50,6 +50,7 @@ export default function ContactUsPropertyOwner() {
         ...prev,
         fullname: session.user.name || "",
         email: session.user.email || "",
+        phone: session.user.phone || "",
       }));
     }
   }, [session]);

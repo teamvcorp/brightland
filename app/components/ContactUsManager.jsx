@@ -44,6 +44,7 @@ export default function ContactUsManager() {
         ...prev,
         fullname: session.user.name || "",
         email: session.user.email || "",
+        phone: session.user.phone || "",
       }));
     }
   }, [session]);
