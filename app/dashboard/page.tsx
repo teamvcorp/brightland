@@ -13,6 +13,24 @@ import Link from 'next/link';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
+interface RentalApplication {
+  _id: string;
+  listingName: string;
+  listingType: string;
+  userEmail: string;
+  userName: string;
+  userPhone: string;
+  employment: string;
+  employer: string;
+  monthlyIncome: string;
+  moveInDate: string;
+  status: 'pending' | 'approved' | 'denied';
+  paymentStatus: 'pending' | 'paid' | 'failed';
+  applicationFee: number;
+  createdAt: string;
+  adminNotes?: string;
+}
+
 export default function DashboardPage() {
   const { data: session, status, update } = useSession();
   const [error, setError] = useState('');
@@ -26,6 +44,7 @@ export default function DashboardPage() {
     state: '',
     zip: '',
   });
+  const [rentalApplications, setRentalApplications] = useState<RentalApplication[]>([]);
   const router = useRouter();
 
   // Redirect managers and property owners to their respective dashboards
@@ -99,10 +118,23 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    const fetchRentalApplications = async () => {
+      try {
+        const response = await fetch(`/api/rental-application?userEmail=${session?.user?.email}`);
+        const data = await response.json();
+        if (response.ok) {
+          setRentalApplications(data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch rental applications:', error);
+      }
+    };
+
     if (session?.user?.email) {
       fetchCurrent40Percent();
       fetchAddress();
       fetchDefaultPaymentMethod();
+      fetchRentalApplications();
     }
   }, [session?.user?.email]);
   const handleAddressChange = (field: string, value: string) => {
@@ -379,6 +411,91 @@ export default function DashboardPage() {
               </div>
 
             </dl>
+          </div>
+
+          {/* Rental Applications Section */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">My Rental Applications</h3>
+            {rentalApplications.length === 0 ? (
+              <p className="text-sm text-gray-500">No rental applications submitted yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {rentalApplications.map((app) => (
+                  <div key={app._id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{app.listingName}</h4>
+                        <p className="text-sm text-gray-600">Type: {app.listingType}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${
+                          app.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          app.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="text-sm text-gray-700 space-y-1">
+                      <p><span className="font-medium">Submitted:</span> {new Date(app.createdAt).toLocaleDateString()}</p>
+                      <p><span className="font-medium">Move-in Date:</span> {new Date(app.moveInDate).toLocaleDateString()}</p>
+                      <p><span className="font-medium">Payment Status:</span> 
+                        <span className={`ml-2 ${
+                          app.paymentStatus === 'paid' ? 'text-green-600' : 
+                          app.paymentStatus === 'pending' ? 'text-yellow-600' : 
+                          'text-red-600'
+                        }`}>
+                          {app.paymentStatus.charAt(0).toUpperCase() + app.paymentStatus.slice(1)}
+                        </span>
+                      </p>
+                      <p><span className="font-medium">Application Fee:</span> ${app.applicationFee.toFixed(2)}</p>
+                    </div>
+
+                    {app.status === 'pending' && (
+                      <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                        <p className="text-sm text-blue-800">🔄 Application under review</p>
+                      </div>
+                    )}
+
+                    {app.status === 'approved' && (
+                      <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded">
+                        <p className="text-sm text-green-800 font-semibold">🎉 Congratulations! Your application has been approved!</p>
+                        {app.adminNotes && <p className="text-sm text-green-700 mt-1">{app.adminNotes}</p>}
+                        
+                        {/* Scaffolded buttons for future features */}
+                        <div className="mt-3 space-y-2">
+                          <button 
+                            disabled 
+                            className="w-full rounded-md bg-gray-300 px-4 py-2 text-gray-600 text-sm font-semibold cursor-not-allowed relative"
+                            title="Coming soon"
+                          >
+                            Complete Identity Verification
+                            <span className="ml-2 text-xs bg-gray-400 px-2 py-0.5 rounded">Coming Soon</span>
+                          </button>
+                          <button 
+                            disabled 
+                            className="w-full rounded-md bg-gray-300 px-4 py-2 text-gray-600 text-sm font-semibold cursor-not-allowed relative"
+                            title="Coming soon"
+                          >
+                            Link Bank Account for Auto-Pay
+                            <span className="ml-2 text-xs bg-gray-400 px-2 py-0.5 rounded">Coming Soon</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {app.status === 'denied' && (
+                      <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded">
+                        <p className="text-sm text-red-800 font-semibold">❌ Application denied</p>
+                        {app.adminNotes && <p className="text-sm text-red-700 mt-1">Reason: {app.adminNotes}</p>}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

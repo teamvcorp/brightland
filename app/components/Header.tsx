@@ -38,8 +38,8 @@ const Header = () => {
                 />
             </Link>
             <div className="headerBtnContainer">
-                {!session && (<Link href="/auth/signin">
-                    <button className="payBtn btn">Sign In</button>
+                {!session && (<Link href="/signup">
+                    <button className="payBtn btn">Sign Up</button>
                 </Link>)}
 
                 <Link href="/contact">
