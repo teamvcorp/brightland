@@ -36,8 +36,6 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [documentType, setDocumentType] = useState('');
-  const [current40Percent, setCurrent40Percent] = useState(0);
-  const [presetMin, setPresetMin] = useState(10);
   const [address, setAddress] = useState({
     street: '',
     city: '',
@@ -69,21 +67,6 @@ export default function DashboardPage() {
 
   const [clientSecret, setClientSecret] = useState('');
   const [showCardForm, setShowCardForm] = useState(false);
-
-  const fetchCurrent40Percent = async () => {
-    try {
-      const response = await fetch('/api/get-current-40-percent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: session?.user?.email }),
-      });
-      const data = await response.json();
-      if (response.ok) setCurrent40Percent(data.current40Percent);
-      else setError(data.message);
-    } catch {
-      setError('Failed to fetch current 40%');
-    }
-  };
 
   const fetchAddress = async () => {
     try {
@@ -131,7 +114,6 @@ export default function DashboardPage() {
     };
 
     if (session?.user?.email) {
-      fetchCurrent40Percent();
       fetchAddress();
       fetchDefaultPaymentMethod();
       fetchRentalApplications();
@@ -152,26 +134,6 @@ export default function DashboardPage() {
       setEditingAddress(false);
     } catch (err) {
       setError('Failed to save address');
-    }
-  };
-  const handleUpdate40Percent = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await fetch('/api/update-40-percent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: session?.user?.email }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setCurrent40Percent(data.new40Percent);
-        alert(`Updated 40% to $${data.new40Percent}`);
-      } else setError(data.message);
-    } catch {
-      setError('Failed to update 40%');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -205,65 +167,6 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
-
-  const handleProcessPayment = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await fetch('/api/stripe/process-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: current40Percent }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Payment processing failed');
-
-      const stripe = await stripePromise;
-      if (!stripe) throw new Error('Stripe.js failed to load');
-
-      const { error: stripeError } = await stripe.confirmCardPayment(data.clientSecret, {
-        payment_method: { card: { token: 'tok_visa' } },
-      });
-
-      if (stripeError) throw new Error(stripeError.message);
-
-      alert(`Payment processed: ${data.paymentIntentId}`);
-    } catch (err: any) {
-      setError(err.message || 'Payment processing failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-  const handleRecurringPayment = async () => {
-    try {
-      const response = await fetch('/api/stripe/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: current40Percent }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.clientSecret) {
-        throw new Error(data.message || 'Failed to create subscription');
-      }
-      const stripe = await stripePromise;
-      if (!stripe) throw new Error('Stripe.js failed to load');
-
-      const result = await stripe.confirmCardPayment(data.clientSecret);
-
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
-
-      alert('Recurring payment setup successful!');
-      return result.paymentIntent;
-    } catch (err: any) {
-      alert(`Payment failed: ${err.message}`);
-      console.error(err);
-      return null;
-    }
-  }
 
   const handleStartUpdatePaymentMethod = async () => {
     const res = await fetch('/api/stripe/setup-intent', {
@@ -464,24 +367,28 @@ export default function DashboardPage() {
                         <p className="text-sm text-green-800 font-semibold">🎉 Congratulations! Your application has been approved!</p>
                         {app.adminNotes && <p className="text-sm text-green-700 mt-1">{app.adminNotes}</p>}
                         
-                        {/* Scaffolded buttons for future features */}
                         <div className="mt-3 space-y-2">
-                          <button 
-                            disabled 
-                            className="w-full rounded-md bg-gray-300 px-4 py-2 text-gray-600 text-sm font-semibold cursor-not-allowed relative"
-                            title="Coming soon"
-                          >
-                            Complete Identity Verification
-                            <span className="ml-2 text-xs bg-gray-400 px-2 py-0.5 rounded">Coming Soon</span>
-                          </button>
-                          <button 
-                            disabled 
-                            className="w-full rounded-md bg-gray-300 px-4 py-2 text-gray-600 text-sm font-semibold cursor-not-allowed relative"
-                            title="Coming soon"
-                          >
-                            Link Bank Account for Auto-Pay
-                            <span className="ml-2 text-xs bg-gray-400 px-2 py-0.5 rounded">Coming Soon</span>
-                          </button>
+                          {session?.user?.identityVerificationStatus !== 'verified' ? (
+                            <button 
+                              onClick={() => {
+                                setDocumentType('');
+                                document.getElementById('identity-verification-section')?.scrollIntoView({ behavior: 'smooth' });
+                              }}
+                              className="w-full rounded-md bg-blue-600 px-4 py-2 text-white text-sm font-semibold hover:bg-blue-700"
+                            >
+                              Complete Identity Verification ↓
+                            </button>
+                          ) : (
+                            <div className="w-full rounded-md bg-green-100 px-4 py-2 text-green-800 text-sm font-semibold text-center border border-green-300">
+                              ✓ Identity Verified
+                            </div>
+                          )}
+                          
+                          <Link href="/linkbank">
+                            <button className="w-full rounded-md bg-indigo-600 px-4 py-2 text-white text-sm font-semibold hover:bg-indigo-700">
+                              Link Bank Account for Auto-Pay
+                            </button>
+                          </Link>
                         </div>
                       </div>
                     )}
@@ -498,23 +405,9 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div>
-            <h3 className="text-lg font-medium text-gray-900">Current 40% Payment</h3>
-            <p className="mt-2 text-sm text-gray-900">${(Math.floor(current40Percent / 100)).toFixed(2)}</p>
-            {session?.user?.role === 'admin' && (
-              <p className="mt-2 text-sm text-gray-500">Preset Min: ${presetMin.toFixed(2)}</p>
-            )}
-            <button
-              onClick={handleUpdate40Percent}
-              disabled={loading}
-              className="mt-4 w-full rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold hover:bg-indigo-500 disabled:bg-indigo-300"
-            >
-              {loading ? 'Processing...' : 'Update 40% from Recent Deposit'}
-            </button>
-          </div>
-
           {!session?.user?.isVerified && (
-            <div>
+            <div id="identity-verification-section">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Identity Verification</h3>
               <label htmlFor="documentType" className="block text-sm font-medium text-gray-700">
                 Document Type
               </label>
@@ -571,27 +464,6 @@ export default function DashboardPage() {
                     />
                   </Elements>
                 )}
-              </div>
-              <div className="mt-4 space-y-2">
-                <Link href="/linkbank">
-                  <button className="w-full rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold hover:bg-indigo-500">
-                    Add Bank Account
-                  </button>
-                </Link>
-                <button
-                  onClick={handleProcessPayment}
-                  disabled={loading}
-                  className="w-full rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold hover:bg-indigo-500 disabled:bg-indigo-300"
-                >
-                  {loading ? 'Processing...' : 'Process Payment'}
-                </button>
-                <button
-                  onClick={handleRecurringPayment}
-                  disabled={loading}
-                  className="w-full rounded-md bg-indigo-600 px-4 py-2 text-white font-semibold hover:bg-indigo-500 disabled:bg-indigo-300"
-                >
-                  {loading ? 'Processing...' : 'Recurring Payment'}
-                </button>
               </div>
             </div>
           )}
