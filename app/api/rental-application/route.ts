@@ -97,7 +97,17 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { applicationId, status, paymentStatus } = body;
+    const { 
+      applicationId, 
+      status, 
+      paymentStatus, 
+      adminNotes,
+      monthlyRent,
+      leaseStartDate,
+      leaseEndDate,
+      firstPaymentAmount,
+      isProrated
+    } = body;
     
     if (!applicationId) {
       return NextResponse.json(
@@ -112,6 +122,12 @@ export async function PATCH(request: NextRequest) {
     const updateObj: any = {};
     if (status) updateObj.status = status;
     if (paymentStatus) updateObj.paymentStatus = paymentStatus;
+    if (adminNotes !== undefined) updateObj.adminNotes = adminNotes;
+    if (monthlyRent !== undefined) updateObj.monthlyRent = monthlyRent;
+    if (leaseStartDate !== undefined) updateObj.leaseStartDate = leaseStartDate;
+    if (leaseEndDate !== undefined) updateObj.leaseEndDate = leaseEndDate;
+    if (firstPaymentAmount !== undefined) updateObj.firstPaymentAmount = firstPaymentAmount;
+    if (isProrated !== undefined) updateObj.isProrated = isProrated;
     
     if (Object.keys(updateObj).length === 0) {
       return NextResponse.json(

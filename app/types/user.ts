@@ -26,6 +26,20 @@ export interface User extends Document {
   role?: string;
   userType: 'tenant' | 'property-owner'; // Removed manager
 
+  // Payment Methods
+  hasCheckingAccount?: boolean;
+  checkingAccountAdded?: Date;
+  achPaymentMethodId?: string;
+  hasCreditCard?: boolean;
+  creditCardAdded?: Date;
+  cardPaymentMethodId?: string;
+  
+  // Security Deposit
+  securityDepositPaid?: boolean;
+  securityDepositAmount?: number;
+  securityDepositDate?: Date;
+  securityDepositIntentId?: string;
+
   // ✅ Address field - for tenants, selected property address
   address?: {
     street: string;

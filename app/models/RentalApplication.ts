@@ -24,6 +24,29 @@ export interface RentalApplication {
   createdAt?: Date;
   updatedAt?: Date;
   adminNotes?: string;
+  
+  // Lease Information (set by admin after approval)
+  monthlyRent?: number; // Pulled from property
+  leaseStartDate?: Date;
+  leaseEndDate?: Date;
+  propertyId?: string; // Reference to property
+  
+  // First Payment Calculation
+  firstPaymentAmount?: number; // Prorated if mid-month
+  firstPaymentDue?: Date;
+  isProrated?: boolean;
+  
+  // Payment Setup Status
+  hasCheckingAccount?: boolean;
+  hasCreditCard?: boolean;
+  securityDepositPaid?: boolean;
+  autoPayEnabled?: boolean;
+  stripeSubscriptionId?: string; // For recurring rent
+  
+  // Payment Tracking
+  lastPaymentDate?: Date;
+  nextPaymentDate?: Date;
+  rentPaymentStatus?: 'current' | 'late' | 'paid_ahead';
 }
 
 const rentalApplicationSchema = new Schema<RentalApplication>({
@@ -55,6 +78,33 @@ const rentalApplicationSchema = new Schema<RentalApplication>({
   paymentIntentId: { type: String, default: null },
   paidAt: { type: Date, default: null },
   adminNotes: { type: String, default: '' },
+  
+  // Lease Information
+  monthlyRent: { type: Number },
+  leaseStartDate: { type: Date },
+  leaseEndDate: { type: Date },
+  propertyId: { type: String },
+  
+  // First Payment
+  firstPaymentAmount: { type: Number },
+  firstPaymentDue: { type: Date },
+  isProrated: { type: Boolean, default: false },
+  
+  // Payment Setup Status
+  hasCheckingAccount: { type: Boolean, default: false },
+  hasCreditCard: { type: Boolean, default: false },
+  securityDepositPaid: { type: Boolean, default: false },
+  autoPayEnabled: { type: Boolean, default: false },
+  stripeSubscriptionId: { type: String },
+  
+  // Payment Tracking
+  lastPaymentDate: { type: Date },
+  nextPaymentDate: { type: Date },
+  rentPaymentStatus: { 
+    type: String, 
+    enum: ['current', 'late', 'paid_ahead'],
+    default: 'current'
+  },
 }, { timestamps: true });
 
 export const RentalApplicationModel = models.RentalApplication || model<RentalApplication>('RentalApplication', rentalApplicationSchema);

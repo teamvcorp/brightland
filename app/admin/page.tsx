@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import ConversationLog from "../components/ConversationLog";
 
 interface ManagerRequest {
   _id: string;
@@ -18,6 +19,19 @@ interface ManagerRequest {
   adminNotes?: string;
   problemImageUrl?: string;
   finishedImageUrl?: string;
+  // Soft delete fields
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+  // Conversation log
+  conversationLog?: Array<{
+    sender: 'admin' | 'user';
+    senderName: string;
+    senderEmail: string;
+    message: string;
+    timestamp: string;
+    isInternal?: boolean;
+  }>;
 }
 
 interface RentalApplication {
@@ -44,6 +58,28 @@ interface RentalApplication {
   createdAt: string;
   updatedAt: string;
   adminNotes?: string;
+  // Lease information
+  monthlyRent?: number;
+  leaseStartDate?: string;
+  leaseEndDate?: string;
+  propertyId?: string;
+  firstPaymentAmount?: number;
+  firstPaymentDue?: string;
+  isProrated?: boolean;
+  // Payment setup status
+  hasCheckingAccount?: boolean;
+  hasCreditCard?: boolean;
+  securityDepositPaid?: boolean;
+  securityDepositAmount?: number;
+  securityDepositIntentId?: string;
+  achPaymentMethodId?: string;
+  cardPaymentMethodId?: string;
+  // Auto-pay and subscription
+  autoPayEnabled?: boolean;
+  stripeSubscriptionId?: string;
+  lastPaymentDate?: string;
+  nextPaymentDate?: string;
+  rentPaymentStatus?: 'current' | 'late' | 'paid_ahead';
 }
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -326,43 +362,110 @@ const RentalApplicationModal = ({
   application, 
   isOpen, 
   onClose, 
-  onUpdate 
+  onUpdate,
+  properties = []
 }: { 
   application: RentalApplication | null;
   isOpen: boolean;
   onClose: () => void;
   onUpdate: (application: RentalApplication) => void;
+  properties?: any[];
 }) => {
   const [status, setStatus] = useState<'pending' | 'approved' | 'denied'>('pending');
   const [adminNotes, setAdminNotes] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Lease management state
+  const [monthlyRent, setMonthlyRent] = useState<number>(0);
+  const [leaseStartDate, setLeaseStartDate] = useState('');
+  const [leaseEndDate, setLeaseEndDate] = useState('');
+  const [firstPaymentAmount, setFirstPaymentAmount] = useState<number>(0);
+  const [isProrated, setIsProrated] = useState(false);
+  const [enablingAutoPay, setEnablingAutoPay] = useState(false);
 
   useEffect(() => {
     if (application) {
       setStatus(application.status);
       setAdminNotes(application.adminNotes || '');
+      
+      // Initialize lease data
+      setMonthlyRent(application.monthlyRent || 0);
+      setLeaseStartDate(application.leaseStartDate ? new Date(application.leaseStartDate).toISOString().split('T')[0] : '');
+      setLeaseEndDate(application.leaseEndDate ? new Date(application.leaseEndDate).toISOString().split('T')[0] : '');
+      setFirstPaymentAmount(application.firstPaymentAmount || 0);
+      setIsProrated(application.isProrated || false);
+      
+      // Auto-fill rent from property if not set
+      if (!application.monthlyRent && properties.length > 0) {
+        const property = properties.find(p => p._id === application.propertyId);
+        if (property && property.rent) {
+          setMonthlyRent(property.rent);
+        }
+      }
     }
-  }, [application]);
+  }, [application, properties]);
+
+  // Calculate prorated rent when lease start date changes
+  useEffect(() => {
+    if (leaseStartDate && monthlyRent > 0) {
+      const startDate = new Date(leaseStartDate);
+      const dayOfMonth = startDate.getDate();
+      
+      // If starting on the 1st, no proration
+      if (dayOfMonth === 1) {
+        setIsProrated(false);
+        setFirstPaymentAmount(monthlyRent);
+      } else {
+        // Calculate prorated amount
+        setIsProrated(true);
+        const daysInMonth = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0).getDate();
+        const daysRemaining = daysInMonth - dayOfMonth + 1;
+        const proratedAmount = (monthlyRent / daysInMonth) * daysRemaining;
+        setFirstPaymentAmount(Math.round(proratedAmount * 100) / 100);
+      }
+    }
+  }, [leaseStartDate, monthlyRent]);
 
   const handleUpdate = async () => {
     if (!application) return;
     
     setIsUpdating(true);
     try {
+      const updateData: any = { 
+        applicationId: application._id,
+        status, 
+        adminNotes 
+      };
+
+      // Include lease data if approved
+      if (status === 'approved' && monthlyRent > 0) {
+        updateData.monthlyRent = monthlyRent;
+        updateData.leaseStartDate = leaseStartDate ? new Date(leaseStartDate).toISOString() : null;
+        updateData.leaseEndDate = leaseEndDate ? new Date(leaseEndDate).toISOString() : null;
+        updateData.firstPaymentAmount = firstPaymentAmount;
+        updateData.isProrated = isProrated;
+      }
+
       const response = await fetch('/api/rental-application', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          applicationId: application._id,
-          status, 
-          adminNotes 
-        }),
+        body: JSON.stringify(updateData),
       });
 
       if (response.ok) {
-        const updatedApplication = { ...application, status, adminNotes, updatedAt: new Date().toISOString() };
+        const updatedApplication = { 
+          ...application, 
+          status, 
+          adminNotes, 
+          monthlyRent,
+          leaseStartDate,
+          leaseEndDate,
+          firstPaymentAmount,
+          isProrated,
+          updatedAt: new Date().toISOString() 
+        };
         onUpdate(updatedApplication);
         onClose();
       } else {
@@ -373,6 +476,70 @@ const RentalApplicationModal = ({
       alert('Error updating application');
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleEnableAutoPay = async () => {
+    if (!application) return;
+
+    // Validate requirements
+    if (!application.hasCheckingAccount) {
+      alert('Tenant must add a checking account before enabling auto-pay.');
+      return;
+    }
+    if (!application.hasCreditCard) {
+      alert('Tenant must add a credit card before enabling auto-pay.');
+      return;
+    }
+    if (!application.securityDepositPaid) {
+      alert('Security deposit must be paid before enabling auto-pay.');
+      return;
+    }
+    if (!leaseStartDate || !leaseEndDate) {
+      alert('Please set lease start and end dates.');
+      return;
+    }
+    if (monthlyRent <= 0) {
+      alert('Please set the monthly rent amount.');
+      return;
+    }
+
+    setEnablingAutoPay(true);
+    try {
+      const response = await fetch('/api/admin/enable-auto-pay', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          applicationId: application._id,
+          monthlyRent,
+          leaseStartDate,
+          leaseEndDate,
+          firstPaymentAmount,
+          isProrated
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert('Auto-pay enabled successfully! Subscription created.');
+        const updatedApplication = { 
+          ...application, 
+          autoPayEnabled: true,
+          stripeSubscriptionId: data.subscriptionId,
+          updatedAt: new Date().toISOString() 
+        };
+        onUpdate(updatedApplication);
+      } else {
+        const error = await response.json();
+        alert(`Failed to enable auto-pay: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error enabling auto-pay:', error);
+      alert('Error enabling auto-pay');
+    } finally {
+      setEnablingAutoPay(false);
     }
   };
 
@@ -512,6 +679,212 @@ const RentalApplicationModal = ({
               />
             </div>
           </div>
+
+          {/* Lease Management (Approved Applications Only) */}
+          {status === 'approved' && (
+            <div className="border-t pt-6">
+              <h3 className="font-semibold text-gray-700 mb-3">Lease Management</h3>
+              
+              <div className="space-y-4">
+                {/* Monthly Rent */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Monthly Rent
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      value={monthlyRent}
+                      onChange={(e) => setMonthlyRent(parseFloat(e.target.value) || 0)}
+                      min="0"
+                      step="0.01"
+                      className="w-full pl-8 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                {/* Lease Dates */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Lease Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={leaseStartDate}
+                      onChange={(e) => setLeaseStartDate(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Lease End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={leaseEndDate}
+                      onChange={(e) => setLeaseEndDate(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* First Payment Calculation */}
+                {isProrated && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <svg className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-yellow-800 mb-1">Prorated First Payment</p>
+                        <p className="text-sm text-yellow-700">
+                          Since the lease starts mid-month, the first payment will be ${firstPaymentAmount.toFixed(2)} (prorated).
+                          Regular monthly rent of ${monthlyRent.toFixed(2)} begins on the 1st of the following month.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Payment Setup Status (Approved Applications Only) */}
+          {status === 'approved' && (
+            <div className="border-t pt-6">
+              <h3 className="font-semibold text-gray-700 mb-3">Payment Setup Status</h3>
+              
+              <div className="space-y-3">
+                {/* Checking Account Status */}
+                <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                  <div className="flex items-center">
+                    {application.hasCheckingAccount ? (
+                      <svg className="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    <span className="text-sm font-medium">Checking Account (ACH)</span>
+                  </div>
+                  {application.hasCheckingAccount && application.achPaymentMethodId && (
+                    <a
+                      href={`https://dashboard.stripe.com/payment_methods/${application.achPaymentMethodId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:text-blue-700 underline"
+                    >
+                      View in Stripe
+                    </a>
+                  )}
+                </div>
+
+                {/* Credit Card Status */}
+                <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                  <div className="flex items-center">
+                    {application.hasCreditCard ? (
+                      <svg className="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    <span className="text-sm font-medium">Credit Card</span>
+                  </div>
+                  {application.hasCreditCard && application.cardPaymentMethodId && (
+                    <a
+                      href={`https://dashboard.stripe.com/payment_methods/${application.cardPaymentMethodId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:text-blue-700 underline"
+                    >
+                      View in Stripe
+                    </a>
+                  )}
+                </div>
+
+                {/* Security Deposit Status */}
+                <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                  <div className="flex items-center">
+                    {application.securityDepositPaid ? (
+                      <svg className="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    <span className="text-sm font-medium">
+                      Security Deposit
+                      {application.securityDepositPaid && application.securityDepositAmount && (
+                        <span className="text-gray-600 ml-2">(${application.securityDepositAmount.toFixed(2)})</span>
+                      )}
+                    </span>
+                  </div>
+                  {application.securityDepositPaid && application.securityDepositIntentId && (
+                    <a
+                      href={`https://dashboard.stripe.com/payments/${application.securityDepositIntentId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:text-blue-700 underline"
+                    >
+                      View Receipt
+                    </a>
+                  )}
+                </div>
+
+                {/* Auto-Pay Status & Enable Button */}
+                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  {application.autoPayEnabled ? (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-semibold text-blue-800">Auto-Pay Enabled</span>
+                      </div>
+                      {application.stripeSubscriptionId && (
+                        <a
+                          href={`https://dashboard.stripe.com/subscriptions/${application.stripeSubscriptionId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-700 underline"
+                        >
+                          View Subscription
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm text-blue-700 mb-3">
+                        Once the tenant completes payment setup and you&apos;ve set the lease details, enable auto-pay to start monthly rent collection.
+                      </p>
+                      <button
+                        onClick={handleEnableAutoPay}
+                        disabled={enablingAutoPay || !application.hasCheckingAccount || !application.hasCreditCard || !application.securityDepositPaid || !leaseStartDate || !leaseEndDate || monthlyRent <= 0}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-semibold"
+                      >
+                        {enablingAutoPay ? "Enabling..." : "Enable Auto-Pay"}
+                      </button>
+                      {(!application.hasCheckingAccount || !application.hasCreditCard || !application.securityDepositPaid || !leaseStartDate || !leaseEndDate || monthlyRent <= 0) && (
+                        <p className="text-xs text-gray-600 mt-2">
+                          Requirements: All payment methods added, security deposit paid, and lease dates set.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}
@@ -1020,11 +1393,24 @@ export default function AdminPage() {
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
 
+  // New: Deletion and conversation states
+  const [viewFilter, setViewFilter] = useState<'active' | 'deleted'>('active');
+  const [showConversation, setShowConversation] = useState(false);
+  const [conversationRequestId, setConversationRequestId] = useState<string>('');
+  const [conversationUserEmail, setConversationUserEmail] = useState<string>('');
+
   const fetchRequests = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/manager-requests');
+      const url = viewFilter === 'deleted' 
+        ? '/api/admin/manager-requests?deleted=true'
+        : '/api/admin/manager-requests';
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched requests:', data.requests.length);
+        if (data.requests.length > 0) {
+          console.log('First request conversationLog:', data.requests[0].conversationLog);
+        }
         setRequests(data.requests);
       }
     } catch (error) {
@@ -1032,7 +1418,7 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [viewFilter]);
 
   const fetchPropertyOwners = useCallback(async () => {
     try {
@@ -1147,6 +1533,61 @@ export default function AdminPage() {
         app._id === updatedApplication._id ? updatedApplication : app
       )
     );
+  };
+
+  // New: Soft delete handler
+  const handleSoftDelete = async (requestId: string, requestAddress: string) => {
+    if (!confirm(`Mark "${requestAddress}" for deletion?\n\nThis request will be hidden but can be recovered within 14 days.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/manager-requests/${requestId}/delete`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        alert('Request marked for deletion. It will be permanently removed in 14 days.');
+        fetchRequests(); // Refresh list
+      } else {
+        const error = await response.json();
+        alert(`Failed to delete: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting request:', error);
+      alert('Failed to delete request');
+    }
+  };
+
+  // New: Recover handler
+  const handleRecover = async (requestId: string, requestAddress: string) => {
+    if (!confirm(`Recover the request for "${requestAddress}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/manager-requests/${requestId}/recover`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        alert('Request recovered successfully!');
+        fetchRequests(); // Refresh list
+      } else {
+        const error = await response.json();
+        alert(`Failed to recover: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error recovering request:', error);
+      alert('Failed to recover request');
+    }
+  };
+
+  // New: Open conversation handler
+  const handleOpenConversation = (requestId: string, userEmail: string) => {
+    setConversationRequestId(requestId);
+    setConversationUserEmail(userEmail);
+    setShowConversation(true);
   };
 
   const handleDeleteProperty = async (property: any) => {
@@ -1577,30 +2018,57 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Status Filter Tabs */}
+        {/* View Toggle and Status Filter Tabs */}
         <div className="mb-6">
-          <div className="flex flex-wrap gap-2 bg-white p-3 rounded-lg shadow-sm">
-            {[
-              { key: 'all', label: 'All', count: statusCounts.all },
-              { key: 'pending', label: 'Pending', count: statusCounts.pending },
-              { key: 'working', label: 'Working', count: statusCounts.working },
-              { key: 'finished', label: 'Finished', count: statusCounts.finished },
-              { key: 'rejected', label: 'Rejected', count: statusCounts.rejected },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setStatusFilter(tab.key)}
-                className={`px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex-1 sm:flex-none ${
-                  statusFilter === tab.key
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                <span className="block sm:inline">{tab.label}</span>
-                <span className="block sm:inline sm:ml-1">({tab.count})</span>
-              </button>
-            ))}
+          {/* View Toggle: Active/Deleted */}
+          <div className="flex gap-2 mb-3 bg-white p-3 rounded-lg shadow-sm">
+            <button
+              onClick={() => setViewFilter('active')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewFilter === 'active'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              📋 Active Requests
+            </button>
+            <button
+              onClick={() => setViewFilter('deleted')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                viewFilter === 'deleted'
+                  ? 'bg-red-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              🗑️ Deleted Requests
+            </button>
           </div>
+
+          {/* Status Filter (only for active view) */}
+          {viewFilter === 'active' && (
+            <div className="flex flex-wrap gap-2 bg-white p-3 rounded-lg shadow-sm">
+              {[
+                { key: 'all', label: 'All', count: statusCounts.all },
+                { key: 'pending', label: 'Pending', count: statusCounts.pending },
+                { key: 'working', label: 'Working', count: statusCounts.working },
+                { key: 'finished', label: 'Finished', count: statusCounts.finished },
+                { key: 'rejected', label: 'Rejected', count: statusCounts.rejected },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setStatusFilter(tab.key)}
+                  className={`px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex-1 sm:flex-none ${
+                    statusFilter === tab.key
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="block sm:inline">{tab.label}</span>
+                  <span className="block sm:inline sm:ml-1">({tab.count})</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Requests Table - Mobile Card View / Desktop Table */}
@@ -1615,6 +2083,7 @@ export default function AdminPage() {
                   <th scope="col" className="py-3 px-6">Property</th>
                   <th scope="col" className="py-3 px-6">Issue</th>
                   <th scope="col" className="py-3 px-6">Status</th>
+                  {viewFilter === 'deleted' && <th scope="col" className="py-3 px-6">Deleted Info</th>}
                   <th scope="col" className="py-3 px-6">Actions</th>
                 </tr>
               </thead>
@@ -1636,13 +2105,54 @@ export default function AdminPage() {
                     <td className="py-4 px-6">
                       <StatusBadge status={request.status} />
                     </td>
+                    {viewFilter === 'deleted' && (
+                      <td className="py-4 px-6 text-xs">
+                        {request.deletedAt && (
+                          <div>
+                            <div className="text-gray-500">
+                              {Math.floor((Date.now() - new Date(request.deletedAt).getTime()) / (1000 * 60 * 60 * 24))} days ago
+                            </div>
+                            <div className="text-gray-400 text-xs">
+                              by {request.deletedBy}
+                            </div>
+                            <div className="text-red-600 font-semibold mt-1">
+                              {14 - Math.floor((Date.now() - new Date(request.deletedAt).getTime()) / (1000 * 60 * 60 * 24))} days left
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                    )}
                     <td className="py-4 px-6">
-                      <button
-                        onClick={() => openModal(request)}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        Manage
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => openModal(request)}
+                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                        >
+                          📝 Manage
+                        </button>
+                        <button
+                          onClick={() => handleOpenConversation(request._id, request.email)}
+                          className="text-purple-600 hover:text-purple-800 font-medium text-sm"
+                        >
+                          💬 Chat ({request.conversationLog?.length || 0})
+                        </button>
+                        {viewFilter === 'active' && (
+                          <button
+                            onClick={() => handleSoftDelete(request._id, request.address)}
+                            className="text-red-600 hover:text-red-800 font-medium text-sm"
+                          >
+                            🗑️ Delete
+                          </button>
+                        )}
+                        {viewFilter === 'deleted' && (
+                          <button
+                            onClick={() => handleRecover(request._id, request.address)}
+                            className="text-green-600 hover:text-green-800 font-medium text-sm"
+                          >
+                            ♻️ Recover
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1654,7 +2164,9 @@ export default function AdminPage() {
           <div className="block lg:hidden">
             {filteredRequests.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No requests found for the selected status.
+                {viewFilter === 'deleted' 
+                  ? 'No deleted requests found.'
+                  : 'No requests found for the selected status.'}
               </div>
             ) : (
               <div className="divide-y">
@@ -1667,6 +2179,18 @@ export default function AdminPage() {
                       </div>
                       <StatusBadge status={request.status} />
                     </div>
+                    
+                    {viewFilter === 'deleted' && request.deletedAt && (
+                      <div className="mb-3 p-2 bg-red-50 rounded border border-red-200">
+                        <div className="text-xs text-gray-600">
+                          Deleted {Math.floor((Date.now() - new Date(request.deletedAt).getTime()) / (1000 * 60 * 60 * 24))} days ago
+                          by {request.deletedBy}
+                        </div>
+                        <div className="text-xs text-red-600 font-semibold mt-1">
+                          {14 - Math.floor((Date.now() - new Date(request.deletedAt).getTime()) / (1000 * 60 * 60 * 24))} days until permanent deletion
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="mb-3">
                       <p className="text-sm text-gray-600 line-clamp-2">{request.projectDescription}</p>
@@ -1682,14 +2206,39 @@ export default function AdminPage() {
                       )}
                     </div>
                     
-                    <div className="flex justify-between items-center text-xs text-gray-500">
-                      <span>{new Date(request.createdAt).toLocaleDateString()}</span>
+                    <div className="flex flex-wrap gap-2 mt-3">
                       <button
                         onClick={() => openModal(request)}
-                        className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700"
+                        className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-blue-700 flex items-center"
                       >
-                        Manage
+                        📝 Manage
                       </button>
+                      <button
+                        onClick={() => handleOpenConversation(request._id, request.email)}
+                        className="bg-purple-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-purple-700 flex items-center"
+                      >
+                        💬 Chat ({request.conversationLog?.length || 0})
+                      </button>
+                      {viewFilter === 'active' && (
+                        <button
+                          onClick={() => handleSoftDelete(request._id, request.address)}
+                          className="bg-red-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-red-700 flex items-center"
+                        >
+                          🗑️ Delete
+                        </button>
+                      )}
+                      {viewFilter === 'deleted' && (
+                        <button
+                          onClick={() => handleRecover(request._id, request.address)}
+                          className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-green-700 flex items-center"
+                        >
+                          ♻️ Recover
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="text-xs text-gray-500 mt-3">
+                      {new Date(request.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                 ))}
@@ -1700,7 +2249,9 @@ export default function AdminPage() {
           {/* Desktop Empty State */}
           {filteredRequests.length === 0 && (
             <div className="hidden lg:block text-center py-8 text-gray-500">
-              No requests found for the selected status.
+              {viewFilter === 'deleted' 
+                ? 'No deleted requests found.'
+                : 'No requests found for the selected status.'}
             </div>
           )}
         </div>
@@ -1717,6 +2268,7 @@ export default function AdminPage() {
           isOpen={isApplicationModalOpen}
           onClose={closeApplicationModal}
           onUpdate={handleApplicationUpdate}
+          properties={allProperties}
         />
 
         <PropertyForm
@@ -1726,6 +2278,18 @@ export default function AdminPage() {
           editingProperty={editingProperty}
           onPropertySaved={handlePropertySaved}
         />
+
+        {/* Conversation Log Modal */}
+        {showConversation && (
+          <ConversationLog
+            requestId={conversationRequestId}
+            userEmail={conversationUserEmail}
+            onClose={() => {
+              setShowConversation(false);
+              fetchRequests(); // Refresh to show updated conversation count
+            }}
+          />
+        )}
       </div>
     </div>
   );

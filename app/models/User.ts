@@ -24,6 +24,20 @@ const userSchema = new Schema<User>({
   current40Percent: { type: Number, default: 0 },
   defaultPaymentMethod: { type: String, default: null },
 
+  // Payment Methods
+  hasCheckingAccount: { type: Boolean, default: false },
+  checkingAccountAdded: { type: Date },
+  achPaymentMethodId: { type: String }, // Stripe payment method ID for ACH
+  hasCreditCard: { type: Boolean, default: false },
+  creditCardAdded: { type: Date },
+  cardPaymentMethodId: { type: String }, // Stripe payment method ID for card
+  
+  // Security Deposit
+  securityDepositPaid: { type: Boolean, default: false },
+  securityDepositAmount: { type: Number, default: 0 },
+  securityDepositDate: { type: Date },
+  securityDepositIntentId: { type: String },
+
   // ✅ Address field - for tenants, selected property address
   address: {
     street: { type: String, default: '' },

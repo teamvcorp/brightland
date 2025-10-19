@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import ConversationLog from "../components/ConversationLog";
 
 interface ManagerRequest {
   _id: string;
@@ -18,6 +19,15 @@ interface ManagerRequest {
   adminNotes?: string;
   problemImageUrl?: string;
   finishedImageUrl?: string;
+  // Conversation log
+  conversationLog?: Array<{
+    sender: 'admin' | 'user';
+    senderName: string;
+    senderEmail: string;
+    message: string;
+    timestamp: string;
+    isInternal?: boolean;
+  }>;
 }
 
 export default function PropertyOwnerDashboard() {
@@ -26,6 +36,18 @@ export default function PropertyOwnerDashboard() {
   const [requests, setRequests] = useState<ManagerRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Conversation states
+  const [showConversation, setShowConversation] = useState(false);
+  const [conversationRequestId, setConversationRequestId] = useState<string>('');
+  const [conversationUserEmail, setConversationUserEmail] = useState<string>('');
+
+  // Open conversation handler
+  const handleOpenConversation = (requestId: string, userEmail: string) => {
+    setConversationRequestId(requestId);
+    setConversationUserEmail(userEmail);
+    setShowConversation(true);
+  };
 
   // Redirect if not property owner
   useEffect(() => {
@@ -226,10 +248,16 @@ export default function PropertyOwnerDashboard() {
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500">
+                    <div className="text-right flex flex-col gap-2">
+                      <p className="text-xs text-gray-500 mb-2">
                         Last updated: {new Date(request.updatedAt).toLocaleDateString()}
                       </p>
+                      <button
+                        onClick={() => handleOpenConversation(request._id, request.email)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1"
+                      >
+                        💬 Chat ({request.conversationLog?.length || 0})
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -252,6 +280,18 @@ export default function PropertyOwnerDashboard() {
               );
             })}
           </div>
+        )}
+
+        {/* Conversation Log Modal */}
+        {showConversation && (
+          <ConversationLog
+            requestId={conversationRequestId}
+            userEmail={conversationUserEmail}
+            onClose={() => {
+              setShowConversation(false);
+              // Optionally refresh requests to show updated conversation count
+            }}
+          />
         )}
       </div>
     </div>

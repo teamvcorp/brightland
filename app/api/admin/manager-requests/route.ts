@@ -8,10 +8,21 @@ export async function GET(req: Request) {
     
     const url = new URL(req.url);
     const status = url.searchParams.get('status');
+    const showDeleted = url.searchParams.get('deleted') === 'true';
     
-    let filter = {};
+    let filter: any = {};
+    
+    // If showing deleted items
+    if (showDeleted) {
+      filter.isDeleted = true;
+    } else {
+      // By default, exclude soft-deleted items
+      filter.isDeleted = { $ne: true };
+    }
+    
+    // Add status filter if provided
     if (status && ['pending', 'working', 'finished', 'rejected'].includes(status)) {
-      filter = { status };
+      filter.status = status;
     }
     
     const requests = await ManagerRequestModel.find(filter)
