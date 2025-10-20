@@ -80,6 +80,10 @@ interface RentalApplication {
   lastPaymentDate?: string;
   nextPaymentDate?: string;
   rentPaymentStatus?: 'current' | 'late' | 'paid_ahead';
+  // Archive fields
+  isArchived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
 }
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -1392,6 +1396,11 @@ export default function AdminPage() {
   const [selectedApplication, setSelectedApplication] = useState<RentalApplication | null>(null);
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
+  const [showArchivedApplications, setShowArchivedApplications] = useState(false);
+  
+  // Collapsible section states
+  const [isPropertySectionCollapsed, setIsPropertySectionCollapsed] = useState(false);
+  const [isApplicationsSectionCollapsed, setIsApplicationsSectionCollapsed] = useState(false);
 
   // New: Deletion and conversation states
   const [viewFilter, setViewFilter] = useState<'active' | 'deleted'>('active');
@@ -1510,14 +1519,24 @@ export default function AdminPage() {
     }
   }, [allProperties, selectedOwnerFilter]);
 
-  // Filter rental applications by status
+  // Filter rental applications by status and archive state
   useEffect(() => {
-    if (applicationStatusFilter === 'all') {
-      setFilteredApplications(rentalApplications);
-    } else {
-      setFilteredApplications(rentalApplications.filter(app => app.status === applicationStatusFilter));
+    let filtered = rentalApplications.filter(app => {
+      // Filter by archive state
+      if (showArchivedApplications) {
+        return app.isArchived === true;
+      } else {
+        return !app.isArchived;
+      }
+    });
+    
+    // Then filter by status
+    if (applicationStatusFilter !== 'all') {
+      filtered = filtered.filter(app => app.status === applicationStatusFilter);
     }
-  }, [rentalApplications, applicationStatusFilter]);
+    
+    setFilteredApplications(filtered);
+  }, [rentalApplications, applicationStatusFilter, showArchivedApplications]);
 
   const handleRequestUpdate = (updatedRequest: ManagerRequest) => {
     setRequests(prev => 
@@ -1533,6 +1552,37 @@ export default function AdminPage() {
         app._id === updatedApplication._id ? updatedApplication : app
       )
     );
+  };
+
+  // Archive/Unarchive application handler
+  const handleArchiveApplication = async (applicationId: string, applicationName: string, isCurrentlyArchived: boolean) => {
+    const action = isCurrentlyArchived ? 'unarchive' : 'archive';
+    if (!confirm(`Are you sure you want to ${action} the application for "${applicationName}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/rental-application`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: applicationId, 
+          isArchived: !isCurrentlyArchived,
+          archivedAt: !isCurrentlyArchived ? new Date().toISOString() : null,
+          archivedBy: session?.user?.email || 'admin'
+        }),
+      });
+
+      if (response.ok) {
+        alert(`Application ${action}d successfully`);
+        fetchRentalApplications(); // Refresh list
+      } else {
+        alert(`Failed to ${action} application`);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing application:`, error);
+      alert(`Failed to ${action} application`);
+    }
   };
 
   // New: Soft delete handler
@@ -1694,11 +1744,33 @@ export default function AdminPage() {
         </div>
 
         {/* Property Management Section */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2 sm:mb-0">
+        <div className="mb-6 bg-white rounded-lg shadow-sm">
+          {/* Collapsible Header */}
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => setIsPropertySectionCollapsed(!isPropertySectionCollapsed)}
+          >
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <svg 
+                className={`w-5 h-5 transition-transform ${isPropertySectionCollapsed ? '-rotate-90' : 'rotate-0'}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
               Property Management ({filteredProperties.length} properties)
             </h2>
+            <span className="text-sm text-gray-500">
+              {isPropertySectionCollapsed ? 'Click to expand' : 'Click to collapse'}
+            </span>
+          </div>
+
+          {/* Collapsible Content */}
+          {!isPropertySectionCollapsed && (
+            <div className="p-4 pt-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div className="mb-2 sm:mb-0"></div>
             <div className="flex flex-col sm:flex-row gap-2">
               <select
                 value={selectedOwnerFilter}
@@ -1804,14 +1876,63 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
+            </div>
+          )}
         </div>
 
         {/* Rental Applications Management Section */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2 sm:mb-0">
+        <div className="mb-6 bg-white rounded-lg shadow-sm">
+          {/* Collapsible Header */}
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => setIsApplicationsSectionCollapsed(!isApplicationsSectionCollapsed)}
+          >
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <svg 
+                className={`w-5 h-5 transition-transform ${isApplicationsSectionCollapsed ? '-rotate-90' : 'rotate-0'}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
               Rental Applications ({filteredApplications.length} applications)
             </h2>
+            <span className="text-sm text-gray-500">
+              {isApplicationsSectionCollapsed ? 'Click to expand' : 'Click to collapse'}
+            </span>
+          </div>
+
+          {/* Collapsible Content */}
+          {!isApplicationsSectionCollapsed && (
+            <div className="p-4 pt-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowArchivedApplications(!showArchivedApplications)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  showArchivedApplications
+                    ? 'bg-gray-700 text-white hover:bg-gray-800'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {showArchivedApplications ? (
+                  <>
+                    <svg className="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                    Archived ({rentalApplications.filter(app => app.isArchived).length})
+                  </>
+                ) : (
+                  <>
+                    <svg className="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Active ({rentalApplications.filter(app => !app.isArchived).length})
+                  </>
+                )}
+              </button>
+            </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <select
                 value={applicationStatusFilter}
@@ -1922,12 +2043,28 @@ export default function AdminPage() {
                         </span>
                       </td>
                       <td className="py-4 px-4">
-                        <button
-                          onClick={() => openApplicationModal(application)}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                        >
-                          Review
-                        </button>
+                        <div className="flex flex-col gap-1">
+                          <button
+                            onClick={() => openApplicationModal(application)}
+                            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                          >
+                            Review
+                          </button>
+                          <button
+                            onClick={() => handleArchiveApplication(
+                              application._id, 
+                              application.userName, 
+                              application.isArchived || false
+                            )}
+                            className={`font-medium text-sm ${
+                              application.isArchived 
+                                ? 'text-green-600 hover:text-green-800' 
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                          >
+                            {application.isArchived ? 'Unarchive' : 'Archive'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -1935,6 +2072,8 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
+            </div>
+          )}
         </div>
 
         {/* Approved Renters Section */}

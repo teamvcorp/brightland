@@ -47,6 +47,11 @@ export interface RentalApplication {
   lastPaymentDate?: Date;
   nextPaymentDate?: Date;
   rentPaymentStatus?: 'current' | 'late' | 'paid_ahead';
+  
+  // Archive fields
+  isArchived?: boolean;
+  archivedAt?: Date;
+  archivedBy?: string;
 }
 
 const rentalApplicationSchema = new Schema<RentalApplication>({
@@ -105,6 +110,11 @@ const rentalApplicationSchema = new Schema<RentalApplication>({
     enum: ['current', 'late', 'paid_ahead'],
     default: 'current'
   },
+  
+  // Archive fields
+  isArchived: { type: Boolean, default: false },
+  archivedAt: { type: Date },
+  archivedBy: { type: String },
 }, { timestamps: true });
 
 export const RentalApplicationModel = models.RentalApplication || model<RentalApplication>('RentalApplication', rentalApplicationSchema);

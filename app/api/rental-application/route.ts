@@ -98,7 +98,8 @@ export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
     const { 
-      applicationId, 
+      applicationId,
+      id, // Allow both applicationId and id for flexibility
       status, 
       paymentStatus, 
       adminNotes,
@@ -106,10 +107,14 @@ export async function PATCH(request: NextRequest) {
       leaseStartDate,
       leaseEndDate,
       firstPaymentAmount,
-      isProrated
+      isProrated,
+      isArchived,
+      archivedAt,
+      archivedBy
     } = body;
     
-    if (!applicationId) {
+    const appId = applicationId || id;
+    if (!appId) {
       return NextResponse.json(
         { error: 'Application ID is required' },
         { status: 400 }
@@ -128,6 +133,9 @@ export async function PATCH(request: NextRequest) {
     if (leaseEndDate !== undefined) updateObj.leaseEndDate = leaseEndDate;
     if (firstPaymentAmount !== undefined) updateObj.firstPaymentAmount = firstPaymentAmount;
     if (isProrated !== undefined) updateObj.isProrated = isProrated;
+    if (isArchived !== undefined) updateObj.isArchived = isArchived;
+    if (archivedAt !== undefined) updateObj.archivedAt = archivedAt;
+    if (archivedBy !== undefined) updateObj.archivedBy = archivedBy;
     
     if (Object.keys(updateObj).length === 0) {
       return NextResponse.json(
@@ -138,7 +146,7 @@ export async function PATCH(request: NextRequest) {
     
     // Update application
     const result = await RentalApplicationModel.findByIdAndUpdate(
-      applicationId,
+      appId,
       updateObj,
       { new: true }
     );
