@@ -4,6 +4,7 @@ import "./globals.css";
 import ClientProvider from "./ClientProvider";
 const inter = Inter({ subsets: ["latin"] });
 import Header from "./components/Header";
+import OnboardingRedirect from "./components/OnboardingRedirect";
 
 
 export const metadata = {
@@ -16,6 +17,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={inter.className}>
         <ClientProvider>
+          <OnboardingRedirect />
           <Header />
           {children}
         </ClientProvider>

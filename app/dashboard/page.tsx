@@ -65,11 +65,22 @@ export default function DashboardPage() {
 
   const [editingAddress, setEditingAddress] = useState(false);
   const [defaultPayment, setDefaultPayment] = useState<{
+    type?: string;
     brand: string;
     last4: string;
-    exp_month: number;
-    exp_year: number;
+    exp_month: number | null;
+    exp_year: number | null;
   } | null>(null);
+  
+  const [backupPayment, setBackupPayment] = useState<{
+    type?: string;
+    brand: string;
+    last4: string;
+    exp_month: number | null;
+    exp_year: number | null;
+  } | null>(null);
+  
+  const [paymentWarning, setPaymentWarning] = useState<string | null>(null);
 
   const [clientSecret, setClientSecret] = useState('');
   const [showCardForm, setShowCardForm] = useState(false);
@@ -100,6 +111,8 @@ export default function DashboardPage() {
       const data = await response.json();
       if (response.ok && data.paymentMethod) {
         setDefaultPayment(data.paymentMethod);
+        setBackupPayment(data.backupPaymentMethod || null);
+        setPaymentWarning(data.warning || null);
       }
     } catch {
       console.error('Failed to fetch default payment method');
@@ -433,15 +446,15 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Payment History Section */}
-            {rentalApplications.some(app => app.status === 'approved' && app.hasCheckingAccount && app.hasCreditCard && app.securityDepositPaid) && (
+            {/* Payment History Section - Show if user has any approved applications */}
+            {rentalApplications.some(app => app.status === 'approved') && (
               <div className="mt-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">Rent Payment History</h3>
+                  <h3 className="text-lg font-medium text-gray-900">Payment History</h3>
                   <button
                     onClick={() => {
                       setShowPaymentHistory(!showPaymentHistory);
-                      if (!showPaymentHistory && payments.length === 0) {
+                      if (!showPaymentHistory) {
                         fetchPayments();
                       }
                     }}
@@ -471,15 +484,18 @@ export default function DashboardPage() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {payments
-                              .filter(payment => payment.type === 'rent')
-                              .map((payment) => (
+                            {payments.map((payment) => (
                               <tr key={payment._id}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   {new Date(payment.dueDate).toLocaleDateString()}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                  Monthly Rent
+                                  {payment.type === 'rent' ? 'Monthly Rent' :
+                                   payment.type === 'security_deposit' ? 'Security Deposit' :
+                                   payment.type === 'fee' ? 'Fee' :
+                                   payment.type === 'late_fee' ? 'Late Fee' :
+                                   payment.type === 'maintenance' ? 'Maintenance' :
+                                   payment.type}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                                   ${payment.amount.toFixed(2)}
@@ -489,6 +505,7 @@ export default function DashboardPage() {
                                     payment.status === 'paid' ? 'bg-green-100 text-green-800' :
                                     payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                                     payment.status === 'failed' ? 'bg-red-100 text-red-800' :
+                                    payment.status === 'refunded' ? 'bg-blue-100 text-blue-800' :
                                     'bg-gray-100 text-gray-800'
                                   }`}>
                                     {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
@@ -541,13 +558,64 @@ export default function DashboardPage() {
             <div>
               <h3 className="text-lg font-medium text-gray-900">Additional Options</h3>
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Payment Method</h3>
-                {defaultPayment && defaultPayment.brand ? (
-                  <p className="text-sm text-gray-700">
-                    {defaultPayment.brand.toUpperCase()} **** {defaultPayment.last4} (exp {defaultPayment.exp_month}/{defaultPayment.exp_year})
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-500">No default payment method found.</p>
+                <h3 className="text-lg font-medium text-gray-900">Payment Methods</h3>
+                
+                {/* Primary Payment Method (Required: Bank Account) */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Primary (Default)</p>
+                  {defaultPayment && defaultPayment.brand ? (
+                    <div className={`text-sm p-3 rounded-md ${
+                      defaultPayment.type === 'bank_account' 
+                        ? 'bg-green-50 border border-green-200 text-green-900' 
+                        : 'bg-yellow-50 border border-yellow-200 text-yellow-900'
+                    }`}>
+                      {defaultPayment.type === 'bank_account' ? (
+                        <p>
+                          🏦 <span className="font-semibold">{defaultPayment.brand}</span> **** {defaultPayment.last4}
+                        </p>
+                      ) : (
+                        <div>
+                          <p>
+                            💳 <span className="font-semibold">{defaultPayment.brand.toUpperCase()}</span> **** {defaultPayment.last4}
+                            {defaultPayment.exp_month && defaultPayment.exp_year && 
+                              ` (exp ${defaultPayment.exp_month}/${defaultPayment.exp_year})`
+                            }
+                          </p>
+                          {paymentWarning && (
+                            <p className="text-xs mt-1 text-yellow-700">⚠️ {paymentWarning}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
+                      ⚠️ No bank account found. Please add a bank account for rent payments.
+                    </p>
+                  )}
+                </div>
+
+                {/* Backup Payment Method (Optional: Credit Card) */}
+                {backupPayment && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Backup (If Bank Payment Fails)</p>
+                    <div className="text-sm p-3 rounded-md bg-blue-50 border border-blue-200 text-blue-900">
+                      <p>
+                        💳 <span className="font-semibold">{backupPayment.brand.toUpperCase()}</span> **** {backupPayment.last4}
+                        {backupPayment.exp_month && backupPayment.exp_year && 
+                          ` (exp ${backupPayment.exp_month}/${backupPayment.exp_year})`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {!backupPayment && defaultPayment?.type === 'bank_account' && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Backup (Optional)</p>
+                    <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-md border border-gray-200">
+                      No backup card on file. Consider adding one for failed ACH payments.
+                    </p>
+                  </div>
                 )}
 
                 <button

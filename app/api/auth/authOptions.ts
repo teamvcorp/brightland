@@ -107,9 +107,22 @@ const authOptions: NextAuthOptions = {
       user.userType = dbUser.userType;
       user.selectedProperty = dbUser.selectedProperty;
       user.company = dbUser.company;
+      
+      // Check if Google OAuth user needs onboarding
+      if (account?.provider === 'google') {
+        // For tenants: check if they have selected a property
+        if (dbUser.userType === 'tenant' && !dbUser.selectedProperty) {
+          user.needsOnboarding = true;
+        }
+        // For property owners: check if they have property owner name
+        else if (dbUser.userType === 'property-owner' && !dbUser.propertyOwnerName) {
+          user.needsOnboarding = true;
+        }
+      }
+      
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.phone = user.phone;
@@ -120,7 +133,31 @@ const authOptions: NextAuthOptions = {
         token.userType = user.userType;
         token.selectedProperty = user.selectedProperty;
         token.company = user.company;
+        token.needsOnboarding = (user as any).needsOnboarding;
       }
+      
+      // Handle session update trigger (when update() is called)
+      if (trigger === 'update') {
+        // Re-fetch user from database to get latest data
+        await connectToDatabase();
+        const dbUser = await UserModel.findOne({ email: token.email }).exec();
+        
+        if (dbUser) {
+          // Update all user fields from database
+          token.userType = dbUser.userType;
+          token.selectedProperty = dbUser.selectedProperty;
+          token.company = dbUser.company;
+          token.phone = dbUser.phone;
+          
+          // Check if user still needs onboarding based on current database state
+          const needsOnboarding = 
+            (dbUser.userType === 'tenant' && !dbUser.selectedProperty) ||
+            (dbUser.userType === 'property-owner' && !dbUser.propertyOwnerName);
+          
+          token.needsOnboarding = needsOnboarding;
+        }
+      }
+      
       if ((user as any)?.shouldRefreshSession) {
         token.updatedAt = Date.now();
       }
@@ -138,6 +175,7 @@ const authOptions: NextAuthOptions = {
         session.user.userType = token.userType as string;
         session.user.selectedProperty = token.selectedProperty as string;
         session.user.company = token.company as string;
+        session.user.needsOnboarding = token.needsOnboarding as boolean;
       }
       return session;
     },
@@ -149,15 +187,15 @@ const authOptions: NextAuthOptions = {
       
       // Parse URL to get search params
       const urlObj = new URL(url);
-      const callbackUrl = urlObj.searchParams.get('callbackUrl') || baseUrl;
+      const callbackUrl = urlObj.searchParams.get('callbackUrl');
       
-      // If no specific callback URL, redirect based on user type
-      if (callbackUrl === baseUrl || callbackUrl === `${baseUrl}/`) {
-        // This will be handled by the frontend after session is loaded
-        return baseUrl;
+      // If there's a specific callback URL, use it
+      if (callbackUrl && callbackUrl !== baseUrl && callbackUrl !== `${baseUrl}/`) {
+        return callbackUrl;
       }
       
-      return callbackUrl;
+      // Default redirect to home (will be handled by frontend onboarding check)
+      return baseUrl;
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
