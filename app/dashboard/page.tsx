@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import Link from 'next/link';
+import { useUserData } from '../hooks';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -40,16 +41,20 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [documentType, setDocumentType] = useState('');
-  const [address, setAddress] = useState({
-    street: '',
-    city: '',
-    state: '',
-    zip: '',
-  });
-  const [rentalApplications, setRentalApplications] = useState<RentalApplication[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
   const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const router = useRouter();
+  
+  // Use custom hook for user data
+  const {
+    address,
+    paymentMethod: defaultPayment,
+    backupPaymentMethod: backupPayment,
+    paymentWarning,
+    payments,
+    rentalApplications,
+    refetchAddress,
+    refetchPaymentMethod,
+  } = useUserData(session?.user?.email || undefined);
 
   // Redirect managers and property owners to their respective dashboards
   useEffect(() => {
@@ -64,111 +69,33 @@ export default function DashboardPage() {
   }, [session, router]);
 
   const [editingAddress, setEditingAddress] = useState(false);
-  const [defaultPayment, setDefaultPayment] = useState<{
-    type?: string;
-    brand: string;
-    last4: string;
-    exp_month: number | null;
-    exp_year: number | null;
-  } | null>(null);
-  
-  const [backupPayment, setBackupPayment] = useState<{
-    type?: string;
-    brand: string;
-    last4: string;
-    exp_month: number | null;
-    exp_year: number | null;
-  } | null>(null);
-  
-  const [paymentWarning, setPaymentWarning] = useState<string | null>(null);
-
   const [clientSecret, setClientSecret] = useState('');
   const [showCardForm, setShowCardForm] = useState(false);
-
-  const fetchAddress = async () => {
-    try {
-      const res = await fetch('/api/user/address', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: session?.user?.email }),
-      });
-      const data = await res.json();
-      if (res.ok && data.address) {
-        setAddress(data.address);
-      }
-    } catch {
-      console.error('Failed to fetch address');
-    }
-  };
-
-  const fetchDefaultPaymentMethod = async () => {
-    try {
-      const response = await fetch('/api/stripe/default-payment-method', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: session?.user?.email }),
-      });
-      const data = await response.json();
-      if (response.ok && data.paymentMethod) {
-        setDefaultPayment(data.paymentMethod);
-        setBackupPayment(data.backupPaymentMethod || null);
-        setPaymentWarning(data.warning || null);
-      }
-    } catch {
-      console.error('Failed to fetch default payment method');
-    }
-  };
-
-  const fetchPayments = async () => {
-    try {
-      console.log('Fetching payments for:', session?.user?.email);
-      const response = await fetch(`/api/tenant/payments?email=${session?.user?.email}`);
-      const data = await response.json();
-      console.log('Payment response:', data);
-      if (response.ok && data.payments) {
-        setPayments(data.payments);
-        console.log('Payments set:', data.payments.length);
-      } else {
-        console.error('Failed to fetch payments:', data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch payment history:', error);
-    }
-  };
-
+  
+  // Local state for editing address (syncs with address from hook)
+  const [localAddress, setLocalAddress] = useState(address);
+  
+  // Sync local address when hook address changes
   useEffect(() => {
-    const fetchRentalApplications = async () => {
-      try {
-        const response = await fetch(`/api/rental-application?userEmail=${session?.user?.email}`);
-        const data = await response.json();
-        if (response.ok) {
-          setRentalApplications(data || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch rental applications:', error);
-      }
-    };
+    setLocalAddress(address);
+  }, [address]);
 
-    if (session?.user?.email) {
-      fetchAddress();
-      fetchDefaultPaymentMethod();
-      fetchRentalApplications();
-      fetchPayments();
-    }
-  }, [session?.user?.email]);
   const handleAddressChange = (field: string, value: string) => {
-    setAddress(prev => ({ ...prev, [field]: value }));
+    setLocalAddress(prev => ({ ...prev, [field]: value as string }));
   };
+  
   const handleSaveAddress = async () => {
     try {
       const res = await fetch('/api/user/update-address', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: session?.user?.email, address }),
+        body: JSON.stringify({ email: session?.user?.email, address: localAddress }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       setEditingAddress(false);
+      // Refetch to get updated address
+      await refetchAddress();
     } catch (err) {
       setError('Failed to save address');
     }
@@ -296,28 +223,28 @@ export default function DashboardPage() {
                       <input
                         type="text"
                         placeholder="Street"
-                        value={address.street}
+                        value={localAddress.street}
                         onChange={(e) => handleAddressChange('street', e.target.value)}
                         className="w-full rounded-md border px-2 py-1 text-sm"
                       />
                       <input
                         type="text"
                         placeholder="City"
-                        value={address.city}
+                        value={localAddress.city}
                         onChange={(e) => handleAddressChange('city', e.target.value)}
                         className="w-full rounded-md border px-2 py-1 text-sm"
                       />
                       <input
                         type="text"
                         placeholder="State"
-                        value={address.state}
+                        value={localAddress.state}
                         onChange={(e) => handleAddressChange('state', e.target.value)}
                         className="w-full rounded-md border px-2 py-1 text-sm"
                       />
                       <input
                         type="text"
                         placeholder="ZIP"
-                        value={address.zip}
+                        value={localAddress.zip}
                         onChange={(e) => handleAddressChange('zip', e.target.value)}
                         className="w-full rounded-md border px-2 py-1 text-sm"
                       />
@@ -360,7 +287,7 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-500">No rental applications submitted yet.</p>
             ) : (
               <div className="space-y-4">
-                {rentalApplications.map((app) => (
+                {rentalApplications.map((app: RentalApplication) => (
                   <div key={app._id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -447,16 +374,13 @@ export default function DashboardPage() {
             )}
 
             {/* Payment History Section - Show if user has any approved applications */}
-            {rentalApplications.some(app => app.status === 'approved') && (
+            {rentalApplications.some((app: RentalApplication) => app.status === 'approved') && (
               <div className="mt-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-medium text-gray-900">Payment History</h3>
                   <button
                     onClick={() => {
                       setShowPaymentHistory(!showPaymentHistory);
-                      if (!showPaymentHistory) {
-                        fetchPayments();
-                      }
                     }}
                     className="text-sm text-indigo-600 hover:text-indigo-700 font-semibold"
                   >
@@ -484,7 +408,7 @@ export default function DashboardPage() {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {payments.map((payment) => (
+                            {payments.map((payment: any) => (
                               <tr key={payment._id}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                   {new Date(payment.dueDate).toLocaleDateString()}
@@ -631,7 +555,7 @@ export default function DashboardPage() {
                       clientSecret={clientSecret}
                       onSuccess={() => {
                         setShowCardForm(false);
-                        fetchDefaultPaymentMethod();
+                        refetchPaymentMethod();
                       }}
                     />
                   </Elements>

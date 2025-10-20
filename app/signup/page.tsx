@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import Image from 'next/image';
+import { useProperties, usePropertyOwners } from '../hooks';
 
 const SignUpContent = () => {
   const [formData, setFormData] = useState({
@@ -15,13 +16,15 @@ const SignUpContent = () => {
     propertyOwnerName: '',
     isNewPropertyOwner: false,
   });
-  const [properties, setProperties] = useState<Array<{name: string, description: string}>>([]);
-  const [propertyOwners, setPropertyOwners] = useState<Array<{name: string}>>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
+  
+  // Use custom hooks for data fetching
+  const { properties, loading: propertiesLoading } = useProperties();
+  const { propertyOwners, loading: ownersLoading } = usePropertyOwners();
   
   // Get callback URL from search params
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
@@ -41,86 +44,6 @@ const SignUpContent = () => {
       }
     }
   }, [session, status, router, callbackUrl]);
-
-  // Load all available properties and property owners on component mount
-  useEffect(() => {
-    // Load properties from database
-    const loadProperties = async () => {
-      try {
-        const response = await fetch('/api/properties');
-        if (response.ok) {
-          const dbProperties = await response.json();
-          // Ensure dbProperties is an array before mapping
-          if (Array.isArray(dbProperties)) {
-            setProperties(dbProperties.map((p: any) => ({ 
-              name: p.name, 
-              description: p.description 
-            })));
-          } else {
-            console.error('Properties data is not an array:', dbProperties);
-            setProperties([]);
-          }
-        } else {
-          console.error('Failed to load properties from database');
-          setProperties([]);
-        }
-      } catch (error) {
-        console.error('Error loading properties:', error);
-        setProperties([]);
-      }
-    };
-
-    // Load property owners
-    const loadPropertyOwners = async () => {
-      try {
-        console.log('Starting to load property owners...');
-        
-        // Add timeout to prevent hanging
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
-        
-        const response = await fetch('/api/property-owners', {
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        console.log('Property owners response status:', response.status, response.statusText);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Property owners response data:', data);
-          console.log('Is response data an array?', Array.isArray(data));
-          console.log('Response data length:', data?.length);
-          
-          // Ensure data is an array before setting it
-          if (Array.isArray(data)) {
-            setPropertyOwners(data);
-            console.log('Successfully set property owners:', data.length, 'owners');
-          } else {
-            console.error('Property owners data is not an array:', data);
-            console.error('Data type:', typeof data);
-            setPropertyOwners([]);
-          }
-        } else {
-          console.error('Failed to load property owners - response not ok');
-          console.error('Response status:', response.status);
-          console.error('Response text:', await response.text());
-          setPropertyOwners([]);
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          console.error('Property owners request timed out after 8 seconds');
-        } else {
-          console.error('Error loading property owners:', error);
-          console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
-        }
-        setPropertyOwners([]);
-      }
-    };
-
-    loadProperties();
-    loadPropertyOwners();
-  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -322,8 +245,8 @@ const SignUpContent = () => {
                         required
                         className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
                       >
-                        <option value="">Select a property...</option>
-                        {properties.map((property, index) => (
+                        <option value="">{propertiesLoading ? 'Loading properties...' : 'Select a property...'}</option>
+                        {properties.map((property: { name: string; description: string }, index: number) => (
                           <option key={index} value={property.name}>
                             {property.name} - {property.description}
                           </option>
@@ -380,8 +303,8 @@ const SignUpContent = () => {
                             required
                             className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
                           >
-                            <option value="">Select an existing property owner...</option>
-                            {propertyOwners.map((owner, index) => (
+                            <option value="">{ownersLoading ? 'Loading property owners...' : 'Select an existing property owner...'}</option>
+                            {propertyOwners.map((owner: { name: string }, index: number) => (
                               <option key={index} value={owner.name}>
                                 {owner.name}
                               </option>
