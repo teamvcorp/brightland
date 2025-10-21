@@ -111,6 +111,81 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
+// Utility function to compress images before upload
+const compressImage = async (file: File, maxSizeMB: number = 4, maxWidthOrHeight: number = 1920): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Resize if needed (maintain aspect ratio)
+        if (width > height) {
+          if (width > maxWidthOrHeight) {
+            height = (height * maxWidthOrHeight) / width;
+            width = maxWidthOrHeight;
+          }
+        } else {
+          if (height > maxWidthOrHeight) {
+            width = (width * maxWidthOrHeight) / height;
+            height = maxWidthOrHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Start with high quality and reduce if needed
+        let quality = 0.9;
+        const tryCompress = () => {
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Failed to compress image'));
+                return;
+              }
+
+              // If still too large and quality can be reduced, try again
+              if (blob.size > maxSizeMB * 1024 * 1024 && quality > 0.1) {
+                quality -= 0.1;
+                tryCompress();
+                return;
+              }
+
+              // Create new file from blob
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+
+              resolve(compressedFile);
+            },
+            'image/jpeg',
+            quality
+          );
+        };
+
+        tryCompress();
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+  });
+};
+
 const RequestModal = ({ 
   request, 
   isOpen, 
@@ -137,19 +212,51 @@ const RequestModal = ({
     }
   }, [request]);
 
-  const handleFinishedImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFinishedImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setFinishedImage(file);
-      const reader = new FileReader();
-      reader.onload = (e) => setFinishedImagePreview(e.target?.result as string);
-      reader.readAsDataURL(file);
+      try {
+        // Compress image if it's too large
+        let processedFile = file;
+        if (file.size > 1 * 1024 * 1024) { // Compress if larger than 1MB
+          console.log(`Original size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+          processedFile = await compressImage(file, 4); // Compress to max 4MB
+          console.log(`Compressed size: ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
+        }
+        
+        setFinishedImage(processedFile);
+        const reader = new FileReader();
+        reader.onload = (e) => setFinishedImagePreview(e.target?.result as string);
+        reader.readAsDataURL(processedFile);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        alert('Failed to process image. Please try a different file.');
+      }
     }
   };
 
   const uploadImage = async (file: File, type: string) => {
+    // Compress image if needed before upload
+    let fileToUpload = file;
+    if (file.size > 1 * 1024 * 1024) { // Compress if larger than 1MB
+      try {
+        console.log(`Compressing image before upload. Original: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+        fileToUpload = await compressImage(file, 4); // Compress to max 4MB
+        console.log(`Compressed: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB`);
+      } catch (error) {
+        console.error('Compression failed:', error);
+        // Continue with original file if compression fails
+      }
+    }
+
+    // Check file size before upload (Vercel has 4.5MB limit)
+    const maxSize = 4.5 * 1024 * 1024; // 4.5MB in bytes
+    if (fileToUpload.size > maxSize) {
+      throw new Error(`Image size (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB) exceeds the 4.5MB limit. Please compress the image or choose a smaller file.`);
+    }
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', fileToUpload);
     formData.append('type', type);
 
     const response = await fetch('/api/upload-image', {
@@ -158,8 +265,19 @@ const RequestModal = ({
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to upload image');
+      // Check if response is JSON or HTML error
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload image');
+      } else {
+        // Likely HTML error page (e.g., "Request Entity Too Large")
+        const errorText = await response.text();
+        if (errorText.includes('Request Entity Too Large') || errorText.includes('413')) {
+          throw new Error('Image file is too large. Please use an image smaller than 4.5MB.');
+        }
+        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+      }
     }
 
     const data = await response.json();
@@ -1001,19 +1119,51 @@ const PropertyForm = ({
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => setImagePreview(e.target?.result as string);
-      reader.readAsDataURL(file);
+      try {
+        // Compress image if it's too large
+        let processedFile = file;
+        if (file.size > 1 * 1024 * 1024) { // Compress if larger than 1MB
+          console.log(`Original size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+          processedFile = await compressImage(file, 4); // Compress to max 4MB
+          console.log(`Compressed size: ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
+        }
+        
+        setImageFile(processedFile);
+        const reader = new FileReader();
+        reader.onload = (e) => setImagePreview(e.target?.result as string);
+        reader.readAsDataURL(processedFile);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        setSubmitStatus('❌ Failed to process image. Please try a different file.');
+      }
     }
   };
 
   const uploadImage = async (file: File) => {
+    // Compress image if needed before upload
+    let fileToUpload = file;
+    if (file.size > 1 * 1024 * 1024) { // Compress if larger than 1MB
+      try {
+        console.log(`Compressing property image before upload. Original: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+        fileToUpload = await compressImage(file, 4); // Compress to max 4MB
+        console.log(`Compressed: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB`);
+      } catch (error) {
+        console.error('Compression failed:', error);
+        // Continue with original file if compression fails
+      }
+    }
+
+    // Check file size before upload (Vercel has 4.5MB limit)
+    const maxSize = 4.5 * 1024 * 1024; // 4.5MB in bytes
+    if (fileToUpload.size > maxSize) {
+      throw new Error(`Image size (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB) exceeds the 4.5MB limit. Please compress the image or choose a smaller file.`);
+    }
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', fileToUpload);
 
     const response = await fetch('/api/upload-property-image', {
       method: 'POST',
@@ -1021,8 +1171,19 @@ const PropertyForm = ({
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to upload image');
+      // Check if response is JSON or HTML error
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload image');
+      } else {
+        // Likely HTML error page (e.g., "Request Entity Too Large")
+        const errorText = await response.text();
+        if (errorText.includes('Request Entity Too Large') || errorText.includes('413')) {
+          throw new Error('Image file is too large. Please use an image smaller than 4.5MB.');
+        }
+        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+      }
     }
 
     const data = await response.json();
