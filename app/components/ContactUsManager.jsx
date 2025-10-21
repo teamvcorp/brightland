@@ -48,6 +48,9 @@ export default function ContactUsManager() {
       }));
     }
   }, [session]);
+  
+  const [isAddressNotListed, setIsAddressNotListed] = useState(false);
+  const [customAddress, setCustomAddress] = useState("");
   const [problemImage, setProblemImage] = useState(null);
   const [problemImagePreview, setProblemImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -62,17 +65,44 @@ export default function ContactUsManager() {
       newErrors.email = "Valid email is required";
     if (!formData.phone.match(/^\+?[\d\s-]{10,}$/))
       newErrors.phone = "Valid phone number is required";
-    if (!formData.address.trim()) newErrors.address = "Address is required";
+    
+    // Validate address - either from dropdown or custom input
+    if (isAddressNotListed) {
+      if (!customAddress.trim()) newErrors.customAddress = "Please enter the property address";
+    } else {
+      if (!formData.address.trim()) newErrors.address = "Please select a property address";
+    }
+    
     if (!formData.projectDescription.trim())
       newErrors.projectDescription = "Project description is required";
     if (!formData.message.trim()) newErrors.message = "Message is required";
     return newErrors;
-  }, [formData]);
+  }, [formData, isAddressNotListed, customAddress]);
 
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Handle address dropdown change
+    if (name === 'address') {
+      if (value === 'NOT_LISTED') {
+        setIsAddressNotListed(true);
+        setFormData((prev) => ({ ...prev, address: '' }));
+      } else {
+        setIsAddressNotListed(false);
+        setCustomAddress('');
+        setFormData((prev) => ({ ...prev, [name]: value }));
+      }
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+    
     setErrors((prev) => ({ ...prev, [name]: null }));
+    setSubmitStatus(null);
+  }, []);
+
+  const handleCustomAddressChange = useCallback((e) => {
+    setCustomAddress(e.target.value);
+    setErrors((prev) => ({ ...prev, customAddress: null }));
     setSubmitStatus(null);
   }, []);
 
@@ -155,8 +185,12 @@ export default function ContactUsManager() {
         }
 
         // Submit the form with image URL
+        // Use custom address if "Not Listed" was selected
+        const finalAddress = isAddressNotListed ? customAddress : formData.address;
+        
         const requestData = {
           ...formData,
+          address: finalAddress,
           problemImageUrl,
         };
 
@@ -178,6 +212,8 @@ export default function ContactUsManager() {
             projectDescription: "",
             message: "",
           });
+          setIsAddressNotListed(false);
+          setCustomAddress("");
           setProblemImage(null);
           setProblemImagePreview(null);
           setTimeout(() => router.push("/"), 3000);
@@ -208,7 +244,7 @@ export default function ContactUsManager() {
         setIsSubmitting(false);
       }
     },
-    [formData, problemImage, router, validateForm, uploadImage]
+    [formData, problemImage, router, validateForm, uploadImage, isAddressNotListed, customAddress]
   );
 
   return (
@@ -331,7 +367,7 @@ export default function ContactUsManager() {
               <select
                 id="address"
                 name="address"
-                value={formData.address}
+                value={isAddressNotListed ? 'NOT_LISTED' : formData.address}
                 onChange={handleInputChange}
                 className={`w-full px-3 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base ${
                   errors.address ? "border-red-500" : "border-gray-300"
@@ -345,6 +381,7 @@ export default function ContactUsManager() {
                     {name}
                   </option>
                 ))}
+                <option value="NOT_LISTED">Property not listed - Enter address manually</option>
               </select>
               {errors.address && (
                 <p id="address-error" className="text-red-500 text-xs sm:text-sm mt-1">
@@ -352,6 +389,39 @@ export default function ContactUsManager() {
                 </p>
               )}
             </div>
+
+            {/* Custom Address Input - Only show when "Not Listed" is selected */}
+            {isAddressNotListed && (
+              <div className="mt-4">
+                <label
+                  htmlFor="customAddress"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Enter Property Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="customAddress"
+                  name="customAddress"
+                  value={customAddress}
+                  onChange={handleCustomAddressChange}
+                  placeholder="Enter full property address..."
+                  className={`w-full px-3 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base ${
+                    errors.customAddress ? "border-red-500" : "border-gray-300"
+                  }`}
+                  required
+                  aria-describedby={errors.customAddress ? "customAddress-error" : undefined}
+                />
+                {errors.customAddress && (
+                  <p id="customAddress-error" className="text-red-500 text-xs sm:text-sm mt-1">
+                    {errors.customAddress}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  This address will be associated with your account for future requests
+                </p>
+              </div>
+            )}
 
             <div>
               <label

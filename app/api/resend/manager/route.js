@@ -126,9 +126,16 @@ export async function POST(request) {
 
     // Determine email subject based on user type
     const isPropertyOwner = userType === 'property-owner';
-    const emailSubject = isPropertyOwner 
-      ? `Property Owner Maintenance Request - ${address}`
-      : `Tenant Maintenance Request - ${address}`;
+    const isHomeOwner = userType === 'home-owner';
+    
+    let emailSubject;
+    if (isPropertyOwner) {
+      emailSubject = `Property Owner Maintenance Request - ${address}`;
+    } else if (isHomeOwner) {
+      emailSubject = `Home Owner Repair Request - ${address}`;
+    } else {
+      emailSubject = `Tenant Maintenance Request - ${address}`;
+    }
 
     console.log('Sending email with subject:', emailSubject);
 
