@@ -236,52 +236,46 @@ const RequestModal = ({
   };
 
   const uploadImage = async (file: File, type: string) => {
-    // Compress image if needed before upload
-    let fileToUpload = file;
-    if (file.size > 1 * 1024 * 1024) { // Compress if larger than 1MB
-      try {
-        console.log(`Compressing image before upload. Original: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-        fileToUpload = await compressImage(file, 4); // Compress to max 4MB
-        console.log(`Compressed: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB`);
-      } catch (error) {
-        console.error('Compression failed:', error);
-        // Continue with original file if compression fails
-      }
-    }
-
-    // Check file size before upload (Vercel has 4.5MB limit)
+    // File should already be compressed by handleFinishedImageChange
+    // Just do a final size check
     const maxSize = 4.5 * 1024 * 1024; // 4.5MB in bytes
-    if (fileToUpload.size > maxSize) {
-      throw new Error(`Image size (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB) exceeds the 4.5MB limit. Please compress the image or choose a smaller file.`);
+    if (file.size > maxSize) {
+      throw new Error(`Image size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds the 4.5MB limit.`);
     }
 
     const formData = new FormData();
-    formData.append('file', fileToUpload);
+    formData.append('file', file);
     formData.append('type', type);
 
-    const response = await fetch('/api/upload-image', {
-      method: 'POST',
-      body: formData,
-    });
+    try {
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
 
-    if (!response.ok) {
-      // Check if response is JSON or HTML error
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upload image');
-      } else {
-        // Likely HTML error page (e.g., "Request Entity Too Large")
-        const errorText = await response.text();
-        if (errorText.includes('Request Entity Too Large') || errorText.includes('413')) {
-          throw new Error('Image file is too large. Please use an image smaller than 4.5MB.');
+      if (!response.ok) {
+        // Try to get the response as text first
+        const responseText = await response.text();
+        
+        // Check if it's JSON
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.error || 'Failed to upload image');
+        } catch (parseError) {
+          // Not JSON, likely HTML error page
+          if (responseText.includes('Request Entity Too Large') || responseText.includes('413')) {
+            throw new Error('Image file is too large. Please use an image smaller than 4.5MB.');
+          }
+          throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
         }
-        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
       }
-    }
 
-    const data = await response.json();
-    return data.url;
+      const data = await response.json();
+      return data.url;
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      throw error;
+    }
   };
 
   const handleUpdate = async () => {
@@ -1143,51 +1137,45 @@ const PropertyForm = ({
   };
 
   const uploadImage = async (file: File) => {
-    // Compress image if needed before upload
-    let fileToUpload = file;
-    if (file.size > 1 * 1024 * 1024) { // Compress if larger than 1MB
-      try {
-        console.log(`Compressing property image before upload. Original: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-        fileToUpload = await compressImage(file, 4); // Compress to max 4MB
-        console.log(`Compressed: ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB`);
-      } catch (error) {
-        console.error('Compression failed:', error);
-        // Continue with original file if compression fails
-      }
-    }
-
-    // Check file size before upload (Vercel has 4.5MB limit)
+    // File should already be compressed by handleImageChange
+    // Just do a final size check
     const maxSize = 4.5 * 1024 * 1024; // 4.5MB in bytes
-    if (fileToUpload.size > maxSize) {
-      throw new Error(`Image size (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB) exceeds the 4.5MB limit. Please compress the image or choose a smaller file.`);
+    if (file.size > maxSize) {
+      throw new Error(`Image size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds the 4.5MB limit.`);
     }
 
     const formData = new FormData();
-    formData.append('file', fileToUpload);
+    formData.append('file', file);
 
-    const response = await fetch('/api/upload-property-image', {
-      method: 'POST',
-      body: formData,
-    });
+    try {
+      const response = await fetch('/api/upload-property-image', {
+        method: 'POST',
+        body: formData,
+      });
 
-    if (!response.ok) {
-      // Check if response is JSON or HTML error
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upload image');
-      } else {
-        // Likely HTML error page (e.g., "Request Entity Too Large")
-        const errorText = await response.text();
-        if (errorText.includes('Request Entity Too Large') || errorText.includes('413')) {
-          throw new Error('Image file is too large. Please use an image smaller than 4.5MB.');
+      if (!response.ok) {
+        // Try to get the response as text first
+        const responseText = await response.text();
+        
+        // Check if it's JSON
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.error || 'Failed to upload image');
+        } catch (parseError) {
+          // Not JSON, likely HTML error page
+          if (responseText.includes('Request Entity Too Large') || responseText.includes('413')) {
+            throw new Error('Image file is too large. Please use an image smaller than 4.5MB.');
+          }
+          throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
         }
-        throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
       }
-    }
 
-    const data = await response.json();
-    return data.url;
+      const data = await response.json();
+      return data.url;
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

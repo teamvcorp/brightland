@@ -98,18 +98,35 @@ export default function ContactUsPropertyOwner() {
     formData.append('file', file);
     formData.append('type', type);
 
-    const response = await fetch('/api/upload-image', {
-      method: 'POST',
-      body: formData,
-    });
+    try {
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to upload image');
+      if (!response.ok) {
+        // Try to get the response as text first to avoid JSON parse errors
+        const responseText = await response.text();
+        
+        // Check if it's JSON
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.error || 'Failed to upload image');
+        } catch (parseError) {
+          // Not JSON, likely HTML error page
+          if (responseText.includes('Request Entity Too Large') || responseText.includes('413')) {
+            throw new Error('Image file is too large. Please use an image smaller than 4.5MB.');
+          }
+          throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+        }
+      }
+
+      const data = await response.json();
+      return data.url;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    return data.url;
   }, []);
 
   const handleSubmit = useCallback(
@@ -118,6 +135,9 @@ export default function ContactUsPropertyOwner() {
       const validationErrors = validateForm();
       if (Object.keys(validationErrors).length > 0) {
         setErrors(validationErrors);
+        setSubmitStatus("Please correct the errors below before submitting");
+        // Scroll to top to show error message
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
 
@@ -170,8 +190,25 @@ export default function ContactUsPropertyOwner() {
           setProblemImagePreview(null);
           setTimeout(() => router.push("/property-owner-dashboard"), 3000);
         } else {
-          const errorData = await res.json();
-          setSubmitStatus(errorData.error || "Failed to send message");
+          // Better error handling
+          let errorMessage = "Failed to submit request";
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.error || errorMessage;
+            
+            // Make errors more user-friendly
+            if (errorMessage.includes("Missing required fields")) {
+              errorMessage = "Please fill in all required fields (marked with *)";
+            } else if (errorMessage.includes("Invalid email")) {
+              errorMessage = "Please enter a valid email address";
+            } else if (errorMessage.includes("Invalid phone")) {
+              errorMessage = "Please enter a valid phone number (at least 10 digits)";
+            }
+          } catch (parseError) {
+            // If response isn't JSON, use generic message
+            console.error('Error parsing response:', parseError);
+          }
+          setSubmitStatus(errorMessage);
         }
       } catch (error) {
         setSubmitStatus("Network error. Please try again later.");
