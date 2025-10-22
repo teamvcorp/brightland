@@ -122,7 +122,7 @@ const ListingTable = ({ title, listings, showExtraAdult = true, session }) => {
   const availableListings = listings.filter(listing => listing.status === "available");
   
   return (
-    <div className="mb-8 bg-white rounded-xl shadow-lg overflow-hidden">
+    <div className="mb-8 bg-white rounded-xl shadow-lg overflow-y-auto scrollbar-obvious">
       <h3 className="text-xl font-bold text-gray-800 bg-gray-50 p-4 border-b border-gray-200 text-center">
         {title} ({availableListings.length} available)
       </h3>
@@ -133,7 +133,7 @@ const ListingTable = ({ title, listings, showExtraAdult = true, session }) => {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-600">
+          <table className="w-full text-sm text-left text-gray-600 ">
             <thead className="text-xs text-gray-700 uppercase bg-gray-100">
               <tr>
                 <th scope="col" className="py-3 px-6">Name</th>
@@ -248,7 +248,7 @@ const Rentals = () => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header and Owner Filter */}
-      <div className="mb-8 bg-white rounded-xl shadow-lg p-6">
+      <div className="mb-8 bg-gray-100 rounded-xl shadow-lg p-6">
         <h1 className="text-3xl font-bold text-gray-800 text-center mb-6">
           Available Rental Properties
         </h1>

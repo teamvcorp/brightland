@@ -72,17 +72,11 @@ function SignInForm() {
   };
 
   return (
-    <div className="flex min-h-full">
+    <div className="flex min-h-full bg-gray-100">
       <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           <div>
-            <Image
-              alt="Your Company"
-              src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=600"
-              width={40}
-              height={40}
-              className="h-10 w-auto"
-            />
+            
             <h2 className="mt-8 text-2xl/9 font-bold tracking-tight text-gray-900">Sign in to your account</h2>
             <p className="mt-2 text-sm/6 text-gray-500">
               Not a member?{' '}
@@ -198,11 +192,11 @@ function SignInForm() {
                   <div className="w-full border-t border-gray-200" />
                 </div>
                 <div className="relative flex justify-center text-sm/6 font-medium">
-                  <span className="bg-white px-6 text-gray-900">Or continue with</span>
+                  <span className=" px-6 text-gray-900">Or continue with</span>
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-1 gap-4">
+              <div className="mt-8 grid grid-cols-1 gap-4">
                 <button
                   onClick={handleGoogleSignIn}
                   className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:ring-transparent"

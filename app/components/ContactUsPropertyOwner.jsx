@@ -8,31 +8,49 @@ export default function ContactUsPropertyOwner() {
   const router = useRouter();
   const { data: session } = useSession();
   
-  // Get all property names from the database
-  const [propertyNames, setPropertyNames] = useState([]);
+  // Get all property owners from the database
+  const [propertyOwners, setPropertyOwners] = useState([]);
+  const [selectedPropertyOwner, setSelectedPropertyOwner] = useState('');
+  const [availableAddresses, setAvailableAddresses] = useState([]);
   const [loadingProperties, setLoadingProperties] = useState(true);
 
   useEffect(() => {
-    // Load properties from the database
-    const loadProperties = async () => {
+    const fetchPropertyOwners = async () => {
       try {
-        const response = await fetch('/api/properties');
+        const response = await fetch('/api/property-owners');
         if (response.ok) {
-          const properties = await response.json();
-          const names = properties.map(property => property.name).sort();
-          setPropertyNames(names);
+          const data = await response.json();
+          setPropertyOwners(Array.isArray(data) ? data : []);
         } else {
-          console.error('Failed to load properties');
+          console.error('Failed to load property owners');
         }
       } catch (error) {
-        console.error('Error loading properties:', error);
+        console.error('Error fetching property owners:', error);
       } finally {
         setLoadingProperties(false);
       }
     };
 
-    loadProperties();
+    fetchPropertyOwners();
   }, []);
+
+  // Update available addresses when property owner is selected
+  useEffect(() => {
+    if (selectedPropertyOwner) {
+      const owner = propertyOwners.find(po => po.name === selectedPropertyOwner);
+      if (owner && owner.properties) {
+        const addresses = owner.properties.map(prop => {
+          const addr = prop.address;
+          return `${addr.street}, ${addr.city}, ${addr.state} ${addr.zip}`;
+        });
+        setAvailableAddresses(addresses);
+      } else {
+        setAvailableAddresses([]);
+      }
+    } else {
+      setAvailableAddresses([]);
+    }
+  }, [selectedPropertyOwner, propertyOwners]);
 
   const [formData, setFormData] = useState({
     fullname: "",
@@ -41,6 +59,7 @@ export default function ContactUsPropertyOwner() {
     address: "",
     projectDescription: "",
     message: "",
+    proposedBudget: "",
   });
 
   // Pre-fill user information when session is available
@@ -164,8 +183,10 @@ export default function ContactUsPropertyOwner() {
         // Submit the form with image URL
         const requestData = {
           ...formData,
+          propertyName: selectedPropertyOwner || 'Unknown Property',
           problemImageUrl,
           userType: 'property-owner', // Indicate this is from a property owner
+          proposedBudget: formData.proposedBudget ? parseFloat(formData.proposedBudget) : null,
         };
 
         const res = await fetch("/api/resend/manager", {
@@ -185,6 +206,7 @@ export default function ContactUsPropertyOwner() {
             address: "",
             projectDescription: "",
             message: "",
+            proposedBudget: "",
           });
           setProblemImage(null);
           setProblemImagePreview(null);
@@ -216,7 +238,7 @@ export default function ContactUsPropertyOwner() {
         setIsSubmitting(false);
       }
     },
-    [formData, problemImage, router, validateForm, uploadImage]
+    [formData, problemImage, router, validateForm, uploadImage, selectedPropertyOwner]
   );
 
   return (
@@ -331,16 +353,45 @@ export default function ContactUsPropertyOwner() {
 
             <div>
               <label
-                htmlFor="address"
+                htmlFor="propertyOwner"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Property Address <span className="text-red-500">*</span>
+                Property Name <span className="text-red-500">*</span>
               </label>
               {loadingProperties ? (
                 <div className="w-full px-3 py-2 sm:py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
                   Loading properties...
                 </div>
               ) : (
+                <select
+                  id="propertyOwner"
+                  name="propertyOwner"
+                  value={selectedPropertyOwner}
+                  onChange={(e) => {
+                    setSelectedPropertyOwner(e.target.value);
+                    setFormData(prev => ({ ...prev, address: '' }));
+                  }}
+                  className="w-full px-3 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base border-gray-300"
+                  required
+                >
+                  <option value="">Select property name...</option>
+                  {propertyOwners.map((owner) => (
+                    <option key={owner._id} value={owner.name}>
+                      {owner.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {selectedPropertyOwner && (
+              <div>
+                <label
+                  htmlFor="address"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Specific Address <span className="text-red-500">*</span>
+                </label>
                 <select
                   id="address"
                   name="address"
@@ -352,20 +403,20 @@ export default function ContactUsPropertyOwner() {
                   required
                   aria-describedby={errors.address ? "address-error" : undefined}
                 >
-                  <option value="">Select your property...</option>
-                  {propertyNames.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
+                  <option value="">Select specific address...</option>
+                  {availableAddresses.map((addr, idx) => (
+                    <option key={idx} value={addr}>
+                      {addr}
                     </option>
                   ))}
                 </select>
-              )}
-              {errors.address && (
-                <p id="address-error" className="text-red-500 text-xs sm:text-sm mt-1">
-                  {errors.address}
-                </p>
-              )}
-            </div>
+                {errors.address && (
+                  <p id="address-error" className="text-red-500 text-xs sm:text-sm mt-1">
+                    {errors.address}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div>
               <label
@@ -419,6 +470,32 @@ export default function ContactUsPropertyOwner() {
                   {errors.message}
                 </p>
               )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="proposedBudget"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Proposed Budget (Optional)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 sm:top-3 text-gray-500">$</span>
+                <input
+                  type="number"
+                  id="proposedBudget"
+                  name="proposedBudget"
+                  value={formData.proposedBudget}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.01"
+                  className="w-full pl-8 pr-3 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                  placeholder="0.00"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Enter an estimated budget for this repair if you have one
+              </p>
             </div>
 
             {/* Image Upload Section */}
@@ -482,7 +559,7 @@ export default function ContactUsPropertyOwner() {
           <button
             type="submit"
             disabled={isSubmitting || uploadingImage || loadingProperties}
-            className={`w-full py-3 sm:py-4 px-6 rounded-lg font-semibold text-white text-sm sm:text-base transition-colors ${
+            className={`w-full py-3 sm:py-4 px-6  rounded-lg font-semibold text-white text-sm sm:text-base transition-colors ${
               isSubmitting || uploadingImage || loadingProperties
                 ? "bg-blue-300 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700"

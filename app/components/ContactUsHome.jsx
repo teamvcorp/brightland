@@ -6,25 +6,44 @@ import Image from "next/image";
 export default function ContactUsHome() {
   const router = useRouter();
   
-  // Get all property names from the database
-  const [propertyNames, setPropertyNames] = useState([]);
+  // Get all property owners from the database
+  const [propertyOwners, setPropertyOwners] = useState([]);
+  const [selectedPropertyOwner, setSelectedPropertyOwner] = useState('');
+  const [availableAddresses, setAvailableAddresses] = useState([]);
 
   useEffect(() => {
-    const fetchProperties = async () => {
+    const fetchPropertyOwners = async () => {
       try {
-        const response = await fetch('/api/properties');
+        const response = await fetch('/api/property-owners');
         if (response.ok) {
           const data = await response.json();
-          const names = data.map(property => property.name).sort();
-          setPropertyNames(names);
+          setPropertyOwners(Array.isArray(data) ? data : []);
         }
       } catch (error) {
-        console.error('Error fetching properties:', error);
+        console.error('Error fetching property owners:', error);
       }
     };
 
-    fetchProperties();
+    fetchPropertyOwners();
   }, []);
+
+  // Update available addresses when property owner is selected
+  useEffect(() => {
+    if (selectedPropertyOwner) {
+      const owner = propertyOwners.find(po => po.name === selectedPropertyOwner);
+      if (owner && owner.properties) {
+        const addresses = owner.properties.map(prop => {
+          const addr = prop.address;
+          return `${addr.street}, ${addr.city}, ${addr.state} ${addr.zip}`;
+        });
+        setAvailableAddresses(addresses);
+      } else {
+        setAvailableAddresses([]);
+      }
+    } else {
+      setAvailableAddresses([]);
+    }
+  }, [selectedPropertyOwner, propertyOwners]);
 
   const [formData, setFormData] = useState({
     fullname: "",
@@ -33,6 +52,7 @@ export default function ContactUsHome() {
     address: "",
     projectDescription: "",
     message: "",
+    proposedBudget: "",
   });
   
   const [isAddressNotListed, setIsAddressNotListed] = useState(false);
@@ -177,6 +197,8 @@ export default function ContactUsHome() {
         const requestData = {
           ...formData,
           address: finalAddress,
+          propertyName: selectedPropertyOwner || 'Unknown Property',
+          proposedBudget: formData.proposedBudget ? parseFloat(formData.proposedBudget) : null,
           problemImageUrl,
           userType: 'home-owner', // Flag to identify home owner requests
         };
@@ -231,7 +253,7 @@ export default function ContactUsHome() {
         setIsSubmitting(false);
       }
     },
-    [formData, problemImage, router, validateForm, uploadImage, isAddressNotListed, customAddress]
+    [formData, problemImage, router, validateForm, uploadImage, isAddressNotListed, customAddress, selectedPropertyOwner]
   );
 
   return (
@@ -248,7 +270,7 @@ export default function ContactUsHome() {
         
         <form
           onSubmit={handleSubmit}
-          className="bg-white shadow-sm rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6"
+          className="bg-white shadow-sm rounded-lg p-4 mb-10 sm:p-6 space-y-4 sm:space-y-6"
           noValidate
         >
           {/* Personal Information */}
@@ -346,36 +368,66 @@ export default function ContactUsHome() {
 
             <div>
               <label
-                htmlFor="address"
+                htmlFor="propertyOwner"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Property Address <span className="text-red-500">*</span>
+                Property Name <span className="text-red-500">*</span>
               </label>
               <select
-                id="address"
-                name="address"
-                value={isAddressNotListed ? 'NOT_LISTED' : formData.address}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base ${
-                  errors.address ? "border-red-500" : "border-gray-300"
-                }`}
+                id="propertyOwner"
+                name="propertyOwner"
+                value={selectedPropertyOwner}
+                onChange={(e) => {
+                  setSelectedPropertyOwner(e.target.value);
+                  setFormData(prev => ({ ...prev, address: '' }));
+                  setIsAddressNotListed(false);
+                }}
+                className="w-full px-3 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base border-gray-300"
                 required
-                aria-describedby={errors.address ? "address-error" : undefined}
               >
-                <option value="">Select your property...</option>
-                {propertyNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
+                <option value="">Select property name...</option>
+                {propertyOwners.map((owner) => (
+                  <option key={owner._id} value={owner.name}>
+                    {owner.name}
                   </option>
                 ))}
-                <option value="NOT_LISTED">Property not listed - Enter address manually</option>
               </select>
-              {errors.address && (
-                <p id="address-error" className="text-red-500 text-xs sm:text-sm mt-1">
-                  {errors.address}
-                </p>
-              )}
             </div>
+
+            {selectedPropertyOwner && (
+              <div>
+                <label
+                  htmlFor="address"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Specific Address <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="address"
+                  name="address"
+                  value={isAddressNotListed ? 'NOT_LISTED' : formData.address}
+                  onChange={handleInputChange}
+                  className={`w-full px-3 py-2 sm:py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base ${
+                    errors.address ? "border-red-500" : "border-gray-300"
+                  }`}
+                  required
+                  aria-describedby={errors.address ? "address-error" : undefined}
+                >
+                  <option value="">Select specific address...</option>
+                  {availableAddresses.map((addr, idx) => (
+                    <option key={idx} value={addr}>
+                      {addr}
+                    </option>
+                  ))}
+                  <option value="NOT_LISTED">Address not listed - Enter manually</option>
+                </select>
+                {errors.address && (
+                  <p id="address-error" className="text-red-500 text-xs sm:text-sm mt-1">
+                    {errors.address}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Custom Address Input - Only show when "Not Listed" is selected */}
             {isAddressNotListed && (
@@ -462,6 +514,33 @@ export default function ContactUsHome() {
                   {errors.message}
                 </p>
               )}
+            </div>
+
+            {/* Proposed Budget Field */}
+            <div>
+              <label
+                htmlFor="proposedBudget"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Proposed Budget (Optional)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 sm:top-3.5 text-gray-500">$</span>
+                <input
+                  type="number"
+                  id="proposedBudget"
+                  name="proposedBudget"
+                  value={formData.proposedBudget}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="0.01"
+                  className="w-full pl-8 pr-3 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                  placeholder="0.00"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Enter an estimated budget for this repair if you have one
+              </p>
             </div>
 
             {/* Image Upload Section */}

@@ -15,9 +15,14 @@ export interface ManagerRequest {
   email: string;
   phone: string;
   address: string;
+  propertyName?: string; // Full property name for sorting/filtering
   projectDescription: string;
   message: string;
   status: 'pending' | 'working' | 'finished' | 'rejected';
+  userType?: 'tenant' | 'property-owner' | 'home-owner'; // Type of user submitting request
+  proposedBudget?: number; // Budget proposed by submitter
+  actualCost?: number; // Actual cost entered by admin
+  amountToBill?: number; // Final amount to bill entered by admin
   createdAt?: Date;
   updatedAt?: Date;
   adminNotes?: string;
@@ -45,6 +50,7 @@ const managerRequestSchema = new Schema<ManagerRequest>({
   email: { type: String, required: true },
   phone: { type: String, required: true },
   address: { type: String, required: true },
+  propertyName: { type: String, default: null },
   projectDescription: { type: String, required: true },
   message: { type: String, required: true },
   status: { 
@@ -52,6 +58,14 @@ const managerRequestSchema = new Schema<ManagerRequest>({
     enum: ['pending', 'working', 'finished', 'rejected'], 
     default: 'pending' 
   },
+  userType: { 
+    type: String, 
+    enum: ['tenant', 'property-owner', 'home-owner'], 
+    default: 'tenant' 
+  },
+  proposedBudget: { type: Number, default: null },
+  actualCost: { type: Number, default: null },
+  amountToBill: { type: Number, default: null },
   adminNotes: { type: String, default: '' },
   problemImageUrl: { type: String, default: null },
   finishedImageUrl: { type: String, default: null },

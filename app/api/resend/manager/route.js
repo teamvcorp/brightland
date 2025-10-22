@@ -16,9 +16,15 @@ export async function POST(request) {
   try {
     await connectToDatabase();
     
-    const { fullname, email, phone, address, projectDescription, message, problemImageUrl, userType } = await request.json();
+    const requestBody = await request.json();
+    const { fullname, email, phone, address, propertyName, projectDescription, message, problemImageUrl, userType, proposedBudget } = requestBody;
 
-    console.log('Received request from:', userType || 'tenant', '- Email:', email);
+    console.log('===== MANAGER REQUEST DEBUG =====');
+    console.log('Full request body:', JSON.stringify(requestBody, null, 2));
+    console.log('propertyName field:', propertyName);
+    console.log('proposedBudget field:', proposedBudget);
+    console.log('userType:', userType || 'tenant');
+    console.log('================================');
 
     if (!fullname || !email || !phone || !address || !projectDescription || !message) {
       return NextResponse.json(
@@ -53,16 +59,25 @@ export async function POST(request) {
     }
 
     // Save the request to the database
-    const managerRequest = await ManagerRequestModel.create({
+    const dataToSave = {
       fullname,
       email,
       phone,
       address,
+      propertyName: propertyName || address, // Use address as fallback if propertyName not provided
       projectDescription,
       message,
       problemImageUrl,
+      userType: userType || 'tenant', // Default to tenant if not specified
+      proposedBudget: proposedBudget || null,
       status: 'pending'
-    });
+    };
+    
+    console.log('===== SAVING TO DATABASE =====');
+    console.log('Data to save:', JSON.stringify(dataToSave, null, 2));
+    console.log('==============================');
+    
+    const managerRequest = await ManagerRequestModel.create(dataToSave);
 
     // Update user's phone number if they provided one and it's different from what's stored
     try {

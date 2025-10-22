@@ -28,6 +28,8 @@ const Header = () => {
 
     return (
         <header>
+            <div className='flex justify-between items-center w-full px-4 py-4 lg:px-10'>
+
             <Link href="/">
                 <Image
                     className="logo"
@@ -54,6 +56,7 @@ const Header = () => {
                 
                 {status === 'authenticated' && (<SignOut />)}
 
+            </div>
             </div>
         </header>
     );

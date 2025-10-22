@@ -172,12 +172,10 @@ transform: scale(1.05);
 header {
   width: 100%;
   display: flex;
+ 
   justify-content: space-between;
   align-items: center;
-  padding-left: 5rem;
-  
-
-  
+ 
  
 }
 .headerNavContainer {
@@ -192,7 +190,7 @@ header {
   display: flex;
   flex-direction: column;
   grid-gap: .5rem;
-  margin-right: 5rem;
+ 
 }
 
 /* MAIN */
@@ -254,4 +252,54 @@ footer {
   color: white;
   font-size: .55rem;
   padding: 1rem .5rem 1rem .5rem;
+}
+
+/* Scrollbar */
+/* globals.css */
+
+/* ===== Very obvious scrollbar utility ===== */
+/* Use the class `scrollbar-obvious` on the scrollable element. */
+
+.scrollbar-obvious {
+  /* reserve space for scrollbar so layout doesn't jump */
+  scrollbar-gutter: stable;
+}
+
+/* WebKit (Chrome, Edge, Safari) */
+.scrollbar-obvious::-webkit-scrollbar {
+  width: 16px;            /* big, obvious width */
+  height: 24px;
+}
+.scrollbar-obvious::-webkit-scrollbar-track {
+  background: #e6f0ff;    /* light-blue track (change to match branding) */
+  border-left: 4px solid transparent; /* visual separation from content */
+  border-radius: 9999px;
+}
+.scrollbar-obvious::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #0b5cff, #0033cc); /* bright blue gradient */
+  border-radius: 9999px;
+  border: 3px solid #e6f0ff;    /* creates a ring/padding around thumb so it stands out */
+  min-height: 48px;             /* ensure big grab handle for touch */
+}
+
+/* Hover/focus states for better affordance */
+.scrollbar-obvious::-webkit-scrollbar-thumb:hover,
+.scrollbar-obvious::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #004be8, #002fa6);
+  border-color: #d6e8ff;
+}
+
+/* Firefox */
+.scrollbar-obvious {
+  scrollbar-width: thin; /* Firefox supports thin/auto but not pixel-perfect sizing */
+  scrollbar-color: #0b5cff #e6f0ff; /* thumb track */
+}
+
+/* For Firefox, to make it appear thicker on platforms where possible, also add a wrapper element
+   with padding-right equal to the scrollbar width if you want to guarantee space. */
+
+/* Optional: Large-touch friendly rule for touch devices (adds visible track background) */
+@media (pointer: coarse) {
+  .scrollbar-obvious::-webkit-scrollbar { width: 20px; }
+  .scrollbar-obvious::-webkit-scrollbar-thumb { min-height: 56px; }
 }

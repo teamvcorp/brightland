@@ -99,13 +99,13 @@ export default function ContactUs() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto p-6 sm:p-8">
+    <div className=" max-w-4xl mx-auto p-6 sm:p-8">
       <h1 className="text-3xl font-bold text-gray-800 text-center mb-8">
         Contact Us
       </h1>
       <form
         onSubmit={handleSubmit}
-        className="bg-white shadow-lg rounded-xl p-6 sm:p-8"
+        className="bg-gray-50 shadow-lg rounded-xl mb-10 p-6 sm:p-8"
         noValidate
       >
         <fieldset className="mb-6">
