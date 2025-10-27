@@ -34,14 +34,9 @@ const SignUpContent = () => {
     if (status === 'loading') return;
     
     if (session?.user) {
-      // User is already logged in, redirect them to the callback URL or dashboard
-      if (session.user.userType === 'property-owner') {
-        router.push('/property-owner-dashboard');
-      } else if (callbackUrl && callbackUrl !== '/dashboard') {
-        router.push(callbackUrl);
-      } else {
-        router.push('/dashboard');
-      }
+      // User is already logged in, redirect them to signin page
+      // (This shouldn't normally happen, but if they navigate to /signup while logged in)
+      router.push('/auth/signin?callbackUrl=' + encodeURIComponent(callbackUrl));
     }
   }, [session, status, router, callbackUrl]);
 

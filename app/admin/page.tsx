@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import ConversationLog from "../components/ConversationLog";
+import toast, { Toaster } from 'react-hot-toast';
 
 interface ManagerRequest {
   _id: string;
@@ -282,7 +283,7 @@ const AdminRepairRequestForm = ({
         reader.readAsDataURL(processedFile);
       } catch (error) {
         console.error('Error processing image:', error);
-        alert('Failed to process image. Please try a different file.');
+        toast.error('Failed to process image. Please try a different file.');
       }
     }
   };
@@ -747,7 +748,7 @@ const RequestModal = ({
         reader.readAsDataURL(processedFile);
       } catch (error) {
         console.error('Error processing image:', error);
-        alert('Failed to process image. Please try a different file.');
+        toast.error('Failed to process finished image. Please try a different file.');
       }
     }
   };
@@ -808,7 +809,7 @@ const RequestModal = ({
         try {
           finishedImageUrl = await uploadImage(finishedImage, 'finished');
         } catch (imageError: any) {
-          alert(`Image upload failed: ${imageError.message || 'Unknown error'}`);
+          toast.error(`Image upload failed: ${imageError.message || 'Unknown error'}`);
           setIsUpdating(false);
           setUploadingFinishedImage(false);
           return;
@@ -828,12 +829,13 @@ const RequestModal = ({
         const data = await response.json();
         onUpdate(data.request);
         onClose();
+        toast.success('Request updated successfully!');
       } else {
-        alert('Failed to update request');
+        toast.error('Failed to update request');
       }
     } catch (error) {
       console.error('Error updating request:', error);
-      alert('Error updating request');
+      toast.error('Error updating request');
     } finally {
       setIsUpdating(false);
     }
@@ -1101,12 +1103,13 @@ const RentalApplicationModal = ({
         };
         onUpdate(updatedApplication);
         onClose();
+        toast.success('Application updated successfully!');
       } else {
-        alert('Failed to update application');
+        toast.error('Failed to update application');
       }
     } catch (error) {
       console.error('Error updating application:', error);
-      alert('Error updating application');
+      toast.error('Error updating application');
     } finally {
       setIsUpdating(false);
     }
@@ -1117,27 +1120,29 @@ const RentalApplicationModal = ({
 
     // Validate requirements
     if (!application.hasCheckingAccount) {
-      alert('Tenant must add a checking account before enabling auto-pay.');
+      toast.error('Tenant must add a checking account before enabling auto-pay.');
       return;
     }
     if (!application.hasCreditCard) {
-      alert('Tenant must add a credit card before enabling auto-pay.');
+      toast.error('Tenant must add a credit card before enabling auto-pay.');
       return;
     }
     if (!application.securityDepositPaid) {
-      alert('Security deposit must be paid before enabling auto-pay.');
+      toast.error('Security deposit must be paid before enabling auto-pay.');
       return;
     }
     if (!leaseStartDate || !leaseEndDate) {
-      alert('Please set lease start and end dates.');
+      toast.error('Please set lease start and end dates.');
       return;
     }
     if (monthlyRent <= 0) {
-      alert('Please set the monthly rent amount.');
+      toast.error('Please set the monthly rent amount.');
       return;
     }
 
     setEnablingAutoPay(true);
+    const loadingToast = toast.loading('Enabling auto-pay...');
+    
     try {
       const response = await fetch('/api/admin/enable-auto-pay', {
         method: 'POST',
@@ -1156,7 +1161,10 @@ const RentalApplicationModal = ({
 
       if (response.ok) {
         const data = await response.json();
-        alert('Auto-pay enabled successfully! Subscription created.');
+        toast.success('✅ Auto-pay enabled successfully! Subscription created.', {
+          id: loadingToast,
+          duration: 4000,
+        });
         const updatedApplication = { 
           ...application, 
           autoPayEnabled: true,
@@ -1166,11 +1174,15 @@ const RentalApplicationModal = ({
         onUpdate(updatedApplication);
       } else {
         const error = await response.json();
-        alert(`Failed to enable auto-pay: ${error.error || 'Unknown error'}`);
+        toast.error(`Failed to enable auto-pay: ${error.error || 'Unknown error'}`, {
+          id: loadingToast,
+        });
       }
     } catch (error) {
       console.error('Error enabling auto-pay:', error);
-      alert('Error enabling auto-pay');
+      toast.error('Error enabling auto-pay', {
+        id: loadingToast,
+      });
     } finally {
       setEnablingAutoPay(false);
     }
@@ -2232,9 +2244,8 @@ export default function AdminPage() {
   // Archive/Unarchive application handler
   const handleArchiveApplication = async (applicationId: string, applicationName: string, isCurrentlyArchived: boolean) => {
     const action = isCurrentlyArchived ? 'unarchive' : 'archive';
-    if (!confirm(`Are you sure you want to ${action} the application for "${applicationName}"?`)) {
-      return;
-    }
+    
+    const loadingToast = toast.loading(`${action === 'archive' ? 'Archiving' : 'Unarchiving'} application...`);
 
     try {
       const response = await fetch(`/api/rental-application`, {
@@ -2249,22 +2260,26 @@ export default function AdminPage() {
       });
 
       if (response.ok) {
-        alert(`Application ${action}d successfully`);
+        toast.success(`Application ${action}d successfully`, {
+          id: loadingToast,
+        });
         fetchRentalApplications(); // Refresh list
       } else {
-        alert(`Failed to ${action} application`);
+        toast.error(`Failed to ${action} application`, {
+          id: loadingToast,
+        });
       }
     } catch (error) {
       console.error(`Error ${action}ing application:`, error);
-      alert(`Failed to ${action} application`);
+      toast.error(`Failed to ${action} application`, {
+        id: loadingToast,
+      });
     }
   };
 
   // New: Soft delete handler
   const handleSoftDelete = async (requestId: string, requestAddress: string) => {
-    if (!confirm(`Mark "${requestAddress}" for deletion?\n\nThis request will be hidden but can be recovered within 14 days.`)) {
-      return;
-    }
+    const loadingToast = toast.loading('Marking request for deletion...');
 
     try {
       const response = await fetch(`/api/admin/manager-requests/${requestId}/delete`, {
@@ -2272,23 +2287,28 @@ export default function AdminPage() {
       });
 
       if (response.ok) {
-        alert('Request marked for deletion. It will be permanently removed in 14 days.');
+        toast.success('Request marked for deletion. It will be permanently removed in 14 days.', {
+          id: loadingToast,
+          duration: 5000,
+        });
         fetchRequests(); // Refresh list
       } else {
         const error = await response.json();
-        alert(`Failed to delete: ${error.error || 'Unknown error'}`);
+        toast.error(`Failed to delete: ${error.error || 'Unknown error'}`, {
+          id: loadingToast,
+        });
       }
     } catch (error) {
       console.error('Error deleting request:', error);
-      alert('Failed to delete request');
+      toast.error('Failed to delete request', {
+        id: loadingToast,
+      });
     }
   };
 
   // New: Recover handler
   const handleRecover = async (requestId: string, requestAddress: string) => {
-    if (!confirm(`Recover the request for "${requestAddress}"?`)) {
-      return;
-    }
+    const loadingToast = toast.loading('Recovering request...');
 
     try {
       const response = await fetch(`/api/admin/manager-requests/${requestId}/recover`, {
@@ -2296,15 +2316,21 @@ export default function AdminPage() {
       });
 
       if (response.ok) {
-        alert('Request recovered successfully!');
+        toast.success('Request recovered successfully!', {
+          id: loadingToast,
+        });
         fetchRequests(); // Refresh list
       } else {
         const error = await response.json();
-        alert(`Failed to recover: ${error.error || 'Unknown error'}`);
+        toast.error(`Failed to recover: ${error.error || 'Unknown error'}`, {
+          id: loadingToast,
+        });
       }
     } catch (error) {
       console.error('Error recovering request:', error);
-      alert('Failed to recover request');
+      toast.error('Failed to recover request', {
+        id: loadingToast,
+      });
     }
   };
 
@@ -2316,9 +2342,7 @@ export default function AdminPage() {
   };
 
   const handleDeleteProperty = async (property: any) => {
-    if (!confirm(`Are you sure you want to delete "${property.name}"?`)) {
-      return;
-    }
+    const loadingToast = toast.loading('Deleting property...');
 
     try {
       const response = await fetch('/api/properties', {
@@ -2335,13 +2359,19 @@ export default function AdminPage() {
       if (response.ok) {
         // Refresh properties list
         fetchProperties();
-        alert('Property deleted successfully');
+        toast.success('Property deleted successfully', {
+          id: loadingToast,
+        });
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.message}`);
+        toast.error(`Error: ${errorData.message}`, {
+          id: loadingToast,
+        });
       }
     } catch (error) {
-      alert('Failed to delete property');
+      toast.error('Failed to delete property', {
+        id: loadingToast,
+      });
     }
   };
 
@@ -2407,6 +2437,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
+      <Toaster position="top-right" />
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
@@ -2582,7 +2613,11 @@ export default function AdminPage() {
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDeleteProperty(property)}
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to delete "${property.name}"?`)) {
+                                handleDeleteProperty(property);
+                              }
+                            }}
                             className="text-red-600 hover:text-red-800 font-medium text-sm"
                           >
                             Delete
@@ -2770,11 +2805,16 @@ export default function AdminPage() {
                             Review
                           </button>
                           <button
-                            onClick={() => handleArchiveApplication(
-                              application._id, 
-                              application.userName, 
-                              application.isArchived || false
-                            )}
+                            onClick={() => {
+                              const action = application.isArchived ? 'unarchive' : 'archive';
+                              if (confirm(`Are you sure you want to ${action} the application for "${application.userName}"?`)) {
+                                handleArchiveApplication(
+                                  application._id, 
+                                  application.userName, 
+                                  application.isArchived || false
+                                );
+                              }
+                            }}
                             className={`font-medium text-sm ${
                               application.isArchived 
                                 ? 'text-green-600 hover:text-green-800' 
@@ -3055,7 +3095,11 @@ export default function AdminPage() {
                         </button>
                         {viewFilter === 'active' && (
                           <button
-                            onClick={() => handleSoftDelete(request._id, request.address)}
+                            onClick={() => {
+                              if (confirm(`Mark "${request.address}" for deletion?\n\nThis request will be hidden but can be recovered within 14 days.`)) {
+                                handleSoftDelete(request._id, request.address);
+                              }
+                            }}
                             className="text-red-600 hover:text-red-800 font-medium text-sm"
                           >
                             🗑️ Delete
@@ -3063,7 +3107,11 @@ export default function AdminPage() {
                         )}
                         {viewFilter === 'deleted' && (
                           <button
-                            onClick={() => handleRecover(request._id, request.address)}
+                            onClick={() => {
+                              if (confirm(`Recover the request for "${request.address}"?`)) {
+                                handleRecover(request._id, request.address);
+                              }
+                            }}
                             className="text-green-600 hover:text-green-800 font-medium text-sm"
                           >
                             ♻️ Recover
@@ -3167,7 +3215,11 @@ export default function AdminPage() {
                       </button>
                       {viewFilter === 'active' && (
                         <button
-                          onClick={() => handleSoftDelete(request._id, request.address)}
+                          onClick={() => {
+                            if (confirm(`Mark "${request.address}" for deletion?\n\nThis request will be hidden but can be recovered within 14 days.`)) {
+                              handleSoftDelete(request._id, request.address);
+                            }
+                          }}
                           className="bg-red-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-red-700 flex items-center"
                         >
                           🗑️ Delete
@@ -3175,7 +3227,11 @@ export default function AdminPage() {
                       )}
                       {viewFilter === 'deleted' && (
                         <button
-                          onClick={() => handleRecover(request._id, request.address)}
+                          onClick={() => {
+                            if (confirm(`Recover the request for "${request.address}"?`)) {
+                              handleRecover(request._id, request.address);
+                            }
+                          }}
                           className="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-green-700 flex items-center"
                         >
                           ♻️ Recover
