@@ -109,7 +109,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ ownerNam
       );
     }
 
-    // Return owner info with their properties
+    // Return owner info with their properties and users
     return NextResponse.json({
       owner: {
         name: (owner as any).name,
@@ -119,6 +119,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ ownerNam
       },
       properties: (owner as any).properties || [],
       propertyCount: (owner as any).properties?.length || 0,
+      users: (owner as any).users || [], // Include users array
     });
   } catch (error: any) {
     console.error('Error fetching owner properties:', error);

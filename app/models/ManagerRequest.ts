@@ -32,6 +32,12 @@ export interface ManagerRequest {
   isDeleted?: boolean;
   deletedAt?: Date;
   deletedBy?: string; // Admin email who deleted
+  // Admin-initiated request fields
+  submittedBy?: 'user' | 'admin'; // Who initiated the request
+  requiresApproval?: boolean; // If true, property owner must approve before work begins
+  approvalStatus?: 'pending-approval' | 'approved' | 'declined'; // Approval status from property owner
+  approvedBy?: string; // Email of property owner who approved/declined
+  approvalDate?: Date; // When approval/decline was made
   // Conversation log
   conversationLog?: ConversationMessage[];
 }
@@ -73,6 +79,12 @@ const managerRequestSchema = new Schema<ManagerRequest>({
   isDeleted: { type: Boolean, default: false },
   deletedAt: { type: Date, default: null },
   deletedBy: { type: String, default: null },
+  // Admin-initiated request fields
+  submittedBy: { type: String, enum: ['user', 'admin'], default: 'user' },
+  requiresApproval: { type: Boolean, default: false },
+  approvalStatus: { type: String, enum: ['pending-approval', 'approved', 'declined'], default: null },
+  approvedBy: { type: String, default: null },
+  approvalDate: { type: Date, default: null },
   // Conversation log
   conversationLog: { type: [conversationMessageSchema], default: [] },
 }, { timestamps: true });

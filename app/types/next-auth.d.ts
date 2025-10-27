@@ -13,6 +13,7 @@ declare module "next-auth" {
       userType?: string;
       selectedProperty?: string;
       company?: string;
+      propertyOwnerName?: string;
       needsOnboarding?: boolean;
     } & DefaultSession["user"];
   }
@@ -28,6 +29,7 @@ declare module "next-auth" {
     userType?: string;
     selectedProperty?: string;
     company?: string;
+    propertyOwnerName?: string;
     needsOnboarding?: boolean;
   }
 }
@@ -43,6 +45,7 @@ declare module "next-auth/jwt" {
     userType?: string;
     selectedProperty?: string;
     company?: string;
+    propertyOwnerName?: string;
     needsOnboarding?: boolean;
   }
 }

@@ -30,11 +30,26 @@ export async function GET() {
       query = {};
       console.log('Admin user - showing all requests');
     } 
-    // Property owners see only requests submitted by them (by email)
+    // Property owners see requests for their property owner account
     else if (session.user.userType === 'property-owner') {
-      // Simple email-based filtering - property owners see requests they submitted
-      query = { email: session.user.email };
-      console.log('Property owner filtering by email:', session.user.email);
+      // Property owners see requests where propertyName matches their propertyOwnerName
+      // or where they are the submitter (for self-submitted requests)
+      const user = session.user as any;
+      const propertyOwnerName = user.propertyOwnerName;
+      
+      if (propertyOwnerName) {
+        query = {
+          $or: [
+            { propertyName: propertyOwnerName }, // Requests for their property
+            { email: session.user.email }  // Requests they submitted
+          ]
+        };
+        console.log('Property owner filtering by propertyOwnerName:', propertyOwnerName);
+      } else {
+        // Fallback to email-based filtering
+        query = { email: session.user.email };
+        console.log('Property owner filtering by email (no propertyOwnerName):', session.user.email);
+      }
     }
     // Regular tenants see only their own requests
     else {

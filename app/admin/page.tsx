@@ -25,6 +25,12 @@ interface ManagerRequest {
   isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
+  // Admin-initiated request fields
+  submittedBy?: 'user' | 'admin';
+  requiresApproval?: boolean;
+  approvalStatus?: 'pending-approval' | 'approved' | 'declined';
+  approvedBy?: string;
+  approvalDate?: string;
   // Conversation log
   conversationLog?: Array<{
     sender: 'admin' | 'user';
@@ -186,6 +192,515 @@ const compressImage = async (file: File, maxSizeMB: number = 4, maxWidthOrHeight
     };
     reader.onerror = () => reject(new Error('Failed to read file'));
   });
+};
+
+// Admin Repair Request Form Component
+const AdminRepairRequestForm = ({
+  propertyOwners,
+  onRequestSubmitted
+}: {
+  propertyOwners: Array<{_id: string, name: string}>;
+  onRequestSubmitted: () => void;
+}) => {
+  const { data: session } = useSession();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState('');
+  
+  const [formData, setFormData] = useState({
+    selectedPropertyOwner: '',
+    selectedUserEmail: '',
+    address: '',
+    projectDescription: '',
+    message: '',
+    proposedBudget: '',
+    requiresApproval: false
+  });
+  
+  const [availableAddresses, setAvailableAddresses] = useState<Array<{formatted: string, full: any}>>([]);
+  const [selectedPropertyOwnerData, setSelectedPropertyOwnerData] = useState<any>(null);
+  const [availableUsers, setAvailableUsers] = useState<Array<{name: string, email: string}>>([]);
+  
+  // Image upload states
+  const [problemImage, setProblemImage] = useState<File | null>(null);
+  const [problemImagePreview, setProblemImagePreview] = useState<string | null>(null);
+  const [uploadingProblemImage, setUploadingProblemImage] = useState(false);
+
+  // Fetch property owner details when selected
+  useEffect(() => {
+    if (formData.selectedPropertyOwner) {
+      fetch(`/api/property-owners/${encodeURIComponent(formData.selectedPropertyOwner)}`)
+        .then(res => res.json())
+        .then(data => {
+          setSelectedPropertyOwnerData(data);
+          if (data && data.properties) {
+            const addresses = data.properties.map((prop: any) => ({
+              formatted: `${prop.address.street}, ${prop.address.city}, ${prop.address.state} ${prop.address.zip}`,
+              full: prop.address
+            }));
+            setAvailableAddresses(addresses);
+          }
+          if (data && data.users) {
+            const users = data.users.map((user: any) => ({
+              name: user.name,
+              email: user.email
+            }));
+            setAvailableUsers(users);
+            // Auto-select first user if only one exists
+            if (users.length === 1) {
+              setFormData(prev => ({ ...prev, selectedUserEmail: users[0].email }));
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching property owner:', err);
+          setAvailableAddresses([]);
+          setAvailableUsers([]);
+        });
+    } else {
+      setAvailableAddresses([]);
+      setSelectedPropertyOwnerData(null);
+      setAvailableUsers([]);
+    }
+  }, [formData.selectedPropertyOwner]);
+
+  const handleProblemImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        // Compress image if it's too large
+        let processedFile = file;
+        if (file.size > 1 * 1024 * 1024) { // Compress if larger than 1MB
+          console.log(`Original size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+          processedFile = await compressImage(file, 4); // Compress to max 4MB
+          console.log(`Compressed size: ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
+        }
+        
+        setProblemImage(processedFile);
+        const reader = new FileReader();
+        reader.onload = (e) => setProblemImagePreview(e.target?.result as string);
+        reader.readAsDataURL(processedFile);
+      } catch (error) {
+        console.error('Error processing image:', error);
+        alert('Failed to process image. Please try a different file.');
+      }
+    }
+  };
+
+  const uploadImage = async (file: File, type: string) => {
+    const maxSize = 4.5 * 1024 * 1024; // 4.5MB in bytes
+    if (file.size > maxSize) {
+      throw new Error(`Image size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds the 4.5MB limit.`);
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+
+    try {
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.error || 'Failed to upload image');
+        } catch (parseError) {
+          if (responseText.includes('Request Entity Too Large') || responseText.includes('413')) {
+            throw new Error('Image file is too large. Please use an image smaller than 4.5MB.');
+          }
+          throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+        }
+      }
+
+      const data = await response.json();
+      return data.url;
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus('');
+
+    try {
+      let problemImageUrl = null;
+
+      // Upload problem image if selected
+      if (problemImage) {
+        setUploadingProblemImage(true);
+        try {
+          problemImageUrl = await uploadImage(problemImage, 'problem');
+        } catch (imageError: any) {
+          setSubmitStatus(`❌ Image upload failed: ${imageError.message}`);
+          setIsSubmitting(false);
+          setUploadingProblemImage(false);
+          return;
+        }
+        setUploadingProblemImage(false);
+      }
+
+      const requestData = {
+        fullname: session?.user?.name || 'Admin',
+        email: formData.selectedUserEmail || session?.user?.email || '', // Use selected user's email
+        phone: 'Admin', // Admin requests don't need a phone number
+        address: formData.address,
+        propertyName: formData.selectedPropertyOwner,
+        projectDescription: formData.projectDescription,
+        message: formData.message,
+        proposedBudget: formData.proposedBudget ? parseFloat(formData.proposedBudget) : null,
+        problemImageUrl,
+        userType: 'property-owner', // Admin requests are submitted as property owner type
+        submittedBy: 'admin',
+        requiresApproval: formData.requiresApproval,
+        approvalStatus: formData.requiresApproval ? 'pending-approval' : null,
+        // If requires approval, set status to pending, otherwise let admin work on it
+        status: formData.requiresApproval ? 'pending' : 'pending'
+      };
+
+      const response = await fetch('/api/resend/manager', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      if (response.ok) {
+        setSubmitStatus(formData.requiresApproval 
+          ? '✅ Request submitted! Property owner will be notified for approval.' 
+          : '✅ Request submitted and added to maintenance history!'
+        );
+        
+        // Reset form
+        setFormData({
+          selectedPropertyOwner: '',
+          selectedUserEmail: '',
+          address: '',
+          projectDescription: '',
+          message: '',
+          proposedBudget: '',
+          requiresApproval: false
+        });
+        setProblemImage(null);
+        setProblemImagePreview(null);
+        
+        // Refresh requests list
+        onRequestSubmitted();
+        
+        // Collapse form after 2 seconds
+        setTimeout(() => {
+          setIsExpanded(false);
+          setSubmitStatus('');
+        }, 2000);
+      } else {
+        const error = await response.json();
+        setSubmitStatus(`❌ Error: ${error.error || 'Failed to submit request'}`);
+      }
+    } catch (error) {
+      console.error('Error submitting request:', error);
+      setSubmitStatus('❌ Error: Failed to submit request');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow-sm border border-blue-200">
+      {/* Collapsible Header */}
+      <div 
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-100 transition-colors rounded-t-lg"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-600 p-2 rounded-lg">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Submit Repair Request as Admin</h2>
+            <p className="text-sm text-gray-600">Create maintenance requests that require property owner approval or add directly to history</p>
+          </div>
+        </div>
+        <svg 
+          className={`w-5 h-5 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+
+      {/* Collapsible Content */}
+      {isExpanded && (
+        <form onSubmit={handleSubmit} className="p-6 pt-4 space-y-4 bg-white">
+          {/* Property Owner Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Property Owner *
+              </label>
+              <select
+                name="selectedPropertyOwner"
+                value={formData.selectedPropertyOwner}
+                onChange={handleInputChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select Property Owner</option>
+                {propertyOwners.map(owner => (
+                  <option key={owner._id} value={owner.name}>
+                    {owner.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Contact Person *
+              </label>
+              <select
+                name="selectedUserEmail"
+                value={formData.selectedUserEmail}
+                onChange={handleInputChange}
+                required
+                disabled={!formData.selectedPropertyOwner || availableUsers.length === 0}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+              >
+                <option value="">
+                  {!formData.selectedPropertyOwner 
+                    ? 'Select property owner first' 
+                    : availableUsers.length === 0 
+                    ? 'No users found' 
+                    : 'Select contact person'}
+                </option>
+                {availableUsers.map((user, idx) => (
+                  <option key={idx} value={user.email}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                This person will receive notifications and approval requests
+              </p>
+            </div>
+          </div>
+
+          {/* Address Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Specific Address *
+            </label>
+            <select
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+              required
+              disabled={!formData.selectedPropertyOwner}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+            >
+              <option value="">
+                {formData.selectedPropertyOwner ? 'Select Address' : 'Select property owner first'}
+              </option>
+              {availableAddresses.map((addr, idx) => (
+                <option key={idx} value={addr.formatted}>
+                  {addr.formatted}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Issue Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Issue/Repair Description *
+            </label>
+            <input
+              type="text"
+              name="projectDescription"
+              value={formData.projectDescription}
+              onChange={handleInputChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="e.g., HVAC maintenance, Plumbing repair, Roof leak"
+            />
+          </div>
+
+          {/* Detailed Message */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Detailed Notes *
+            </label>
+            <textarea
+              name="message"
+              value={formData.message}
+              onChange={handleInputChange}
+              required
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Provide detailed information about the repair or maintenance needed..."
+            />
+          </div>
+
+          {/* Problem Image Upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Problem/Issue Photo
+            </label>
+            <div className="space-y-3">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleProblemImageChange}
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+              />
+              {problemImagePreview && (
+                <div className="relative">
+                  <Image
+                    src={problemImagePreview}
+                    alt="Problem preview"
+                    width={384}
+                    height={192}
+                    className="w-full max-w-sm h-48 object-cover rounded-lg border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProblemImage(null);
+                      setProblemImagePreview(null);
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Optional: Upload a photo showing the issue or area needing repair
+            </p>
+          </div>
+
+          {/* Proposed Budget */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estimated Budget
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  name="proposedBudget"
+                  value={formData.proposedBudget}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  min="0"
+                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="0.00"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Optional: Estimated cost for the repair</p>
+            </div>
+
+            {/* Requires Approval Checkbox */}
+            <div className="flex items-center">
+              <div className="flex items-start h-full pt-6">
+                <input
+                  type="checkbox"
+                  name="requiresApproval"
+                  checked={formData.requiresApproval}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-1"
+                  id="requiresApproval"
+                />
+                <label htmlFor="requiresApproval" className="ml-2">
+                  <span className="text-sm font-medium text-gray-900">Requires Property Owner Approval</span>
+                  <p className="text-xs text-gray-500">If checked, property owner must approve before work begins. If unchecked, request is added directly to history.</p>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Property Owner Email Preview */}
+          {formData.requiresApproval && formData.selectedUserEmail && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-blue-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                  <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                </svg>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-blue-800 mb-1">Approval request will be sent to:</p>
+                  <div className="text-sm text-blue-700">
+                    {availableUsers.find(u => u.email === formData.selectedUserEmail)?.name} ({formData.selectedUserEmail})
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    They will receive an email notification and see the request in their dashboard where they can approve or decline.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Submit Status */}
+          {submitStatus && (
+            <div className={`p-3 rounded-lg ${
+              submitStatus.startsWith('✅') 
+                ? 'bg-green-50 border border-green-200 text-green-800' 
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+              <p className="text-sm font-medium">{submitStatus}</p>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:justify-end pt-4 border-t">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              className="w-full sm:w-auto px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || uploadingProblemImage}
+              className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition-colors font-medium"
+            >
+              {uploadingProblemImage 
+                ? "Uploading Image..." 
+                : isSubmitting 
+                  ? 'Submitting...' 
+                  : formData.requiresApproval ? 'Submit for Approval' : 'Add to History'
+              }
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
 };
 
 const RequestModal = ({ 
@@ -1916,6 +2431,12 @@ export default function AdminPage() {
           </Link>
         </div>
 
+        {/* Admin Repair Request Section */}
+        <AdminRepairRequestForm
+          propertyOwners={propertyOwners}
+          onRequestSubmitted={fetchRequests}
+        />
+
         {/* Property Management Section */}
         <div className="mb-6 bg-white rounded-lg shadow-sm">
           {/* Collapsible Header */}
@@ -1962,6 +2483,31 @@ export default function AdminPage() {
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
               >
                 Add Property
+              </button>
+              <button
+                onClick={async () => {
+                  if (confirm('This will sync all registered users (with userType="property-owner") to their PropertyOwner organizations based on the propertyOwnerName field. Continue?')) {
+                    try {
+                      const response = await fetch('/api/admin/sync-property-owner-users', {
+                        method: 'POST',
+                      });
+                      const data = await response.json();
+                      if (response.ok) {
+                        alert(`✅ Success!\n\nProperty Owners Updated: ${data.propertyOwnersUpdated}\nTotal Users Added: ${data.totalUsersAdded}\n\nDetails:\n${data.results.map((r: any) => `${r.propertyOwner}: ${r.usersAdded} users`).join('\n')}`);
+                        // Refresh data
+                        fetchPropertyOwners();
+                      } else {
+                        alert(`❌ Error: ${data.error}`);
+                      }
+                    } catch (error) {
+                      console.error('Sync error:', error);
+                      alert('❌ Failed to sync users');
+                    }
+                  }
+                }}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+              >
+                Sync Users to Owners
               </button>
             </div>
           </div>
@@ -2440,7 +2986,7 @@ export default function AdminPage() {
                         <div className="max-w-xs truncate" title={request.projectDescription}>
                           {request.projectDescription}
                         </div>
-                        <div>
+                        <div className="flex flex-wrap gap-1">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             request.userType === 'home-owner' 
                               ? 'bg-green-100 text-green-800'
@@ -2452,6 +2998,24 @@ export default function AdminPage() {
                             {request.userType === 'property-owner' && '🏢 Property Owner'}
                             {(!request.userType || request.userType === 'tenant') && '🏠 Tenant'}
                           </span>
+                          {request.submittedBy === 'admin' && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                              👤 Admin
+                            </span>
+                          )}
+                          {request.requiresApproval && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                              request.approvalStatus === 'approved' 
+                                ? 'bg-green-100 text-green-800'
+                                : request.approvalStatus === 'declined'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {request.approvalStatus === 'approved' && '✓ Approved'}
+                              {request.approvalStatus === 'declined' && '✗ Declined'}
+                              {request.approvalStatus === 'pending-approval' && '⏳ Pending Approval'}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -2559,6 +3123,24 @@ export default function AdminPage() {
                           {request.userType === 'property-owner' && '🏢 Property Owner'}
                           {(!request.userType || request.userType === 'tenant') && '🏠 Tenant'}
                         </span>
+                        {request.submittedBy === 'admin' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                            👤 Admin
+                          </span>
+                        )}
+                        {request.requiresApproval && (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            request.approvalStatus === 'approved' 
+                              ? 'bg-green-100 text-green-800'
+                              : request.approvalStatus === 'declined'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {request.approvalStatus === 'approved' && '✓ Approved'}
+                            {request.approvalStatus === 'declined' && '✗ Declined'}
+                            {request.approvalStatus === 'pending-approval' && '⏳ Pending'}
+                          </span>
+                        )}
                         {request.problemImageUrl && (
                           <span className="inline-flex items-center text-xs text-blue-600">
                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

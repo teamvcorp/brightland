@@ -107,6 +107,7 @@ const authOptions: NextAuthOptions = {
       user.userType = dbUser.userType;
       user.selectedProperty = dbUser.selectedProperty;
       user.company = dbUser.company;
+      user.propertyOwnerName = dbUser.propertyOwnerName;
       
       // Check if Google OAuth user needs onboarding
       if (account?.provider === 'google') {
@@ -133,6 +134,7 @@ const authOptions: NextAuthOptions = {
         token.userType = user.userType;
         token.selectedProperty = user.selectedProperty;
         token.company = user.company;
+        token.propertyOwnerName = user.propertyOwnerName;
         token.needsOnboarding = (user as any).needsOnboarding;
       }
       
@@ -147,6 +149,7 @@ const authOptions: NextAuthOptions = {
           token.userType = dbUser.userType;
           token.selectedProperty = dbUser.selectedProperty;
           token.company = dbUser.company;
+          token.propertyOwnerName = dbUser.propertyOwnerName;
           token.phone = dbUser.phone;
           
           // Check if user still needs onboarding based on current database state
@@ -175,6 +178,7 @@ const authOptions: NextAuthOptions = {
         session.user.userType = token.userType as string;
         session.user.selectedProperty = token.selectedProperty as string;
         session.user.company = token.company as string;
+        session.user.propertyOwnerName = token.propertyOwnerName as string;
         session.user.needsOnboarding = token.needsOnboarding as boolean;
       }
       return session;

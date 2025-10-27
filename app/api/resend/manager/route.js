@@ -17,16 +17,31 @@ export async function POST(request) {
     await connectToDatabase();
     
     const requestBody = await request.json();
-    const { fullname, email, phone, address, propertyName, projectDescription, message, problemImageUrl, userType, proposedBudget } = requestBody;
+    const { 
+      fullname, 
+      email, 
+      phone, 
+      address, 
+      propertyName, 
+      projectDescription, 
+      message, 
+      problemImageUrl, 
+      userType, 
+      proposedBudget,
+      submittedBy,
+      requiresApproval,
+      approvalStatus
+    } = requestBody;
 
     console.log('===== MANAGER REQUEST DEBUG =====');
     console.log('Full request body:', JSON.stringify(requestBody, null, 2));
     console.log('propertyName field:', propertyName);
     console.log('proposedBudget field:', proposedBudget);
     console.log('userType:', userType || 'tenant');
+    console.log('submittedBy:', submittedBy);
     console.log('================================');
 
-    if (!fullname || !email || !phone || !address || !projectDescription || !message) {
+    if (!fullname || !email || !address || !projectDescription || !message) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -37,7 +52,8 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
-    if (!phone.match(/^\+?[\d\s-]{10,}$/)) {
+    // Only validate phone format if it's provided and not an admin request
+    if (phone && submittedBy !== 'admin' && !phone.match(/^\+?[\d\s-]{10,}$/)) {
       return NextResponse.json(
         { error: "Invalid phone format" },
         { status: 400 }
@@ -62,7 +78,7 @@ export async function POST(request) {
     const dataToSave = {
       fullname,
       email,
-      phone,
+      phone: phone || 'N/A', // Use 'N/A' if no phone provided (admin requests)
       address,
       propertyName: propertyName || address, // Use address as fallback if propertyName not provided
       projectDescription,
@@ -70,6 +86,9 @@ export async function POST(request) {
       problemImageUrl,
       userType: userType || 'tenant', // Default to tenant if not specified
       proposedBudget: proposedBudget || null,
+      submittedBy: submittedBy || 'user',
+      requiresApproval: requiresApproval || false,
+      approvalStatus: approvalStatus || null,
       status: 'pending'
     };
     
@@ -115,6 +134,9 @@ export async function POST(request) {
           projectDescription={projectDescription}
           message={message}
           problemImageUrl={problemImageUrl}
+          requiresApproval={requiresApproval || false}
+          proposedBudget={proposedBudget}
+          submittedBy={submittedBy || 'user'}
         />,
         { pretty: true } // Formats HTML for better readability
       );      

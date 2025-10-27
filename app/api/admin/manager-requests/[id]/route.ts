@@ -11,8 +11,44 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     await connectToDatabase();
     
-    const { status, adminNotes, finishedImageUrl } = await req.json();
+    const body = await req.json();
     const { id } = await params;
+    
+    // Handle approval status updates (for property owners)
+    if (body.approvalStatus) {
+      const { approvalStatus, approvedBy, approvalDate } = body;
+      
+      if (!['approved', 'declined'].includes(approvalStatus)) {
+        return NextResponse.json(
+          { error: 'Invalid approval status' },
+          { status: 400 }
+        );
+      }
+      
+      const request = await ManagerRequestModel.findById(id);
+      if (!request) {
+        return NextResponse.json(
+          { error: 'Request not found' },
+          { status: 404 }
+        );
+      }
+      
+      // Update approval fields
+      const updatedRequest = await ManagerRequestModel.findByIdAndUpdate(
+        id,
+        { 
+          approvalStatus,
+          approvedBy,
+          approvalDate: new Date(approvalDate)
+        },
+        { new: true }
+      );
+      
+      return NextResponse.json({ request: updatedRequest }, { status: 200 });
+    }
+    
+    // Handle status updates (for admins)
+    const { status, adminNotes, finishedImageUrl } = body;
     
     if (!status || !['pending', 'working', 'finished', 'rejected'].includes(status)) {
       return NextResponse.json(
