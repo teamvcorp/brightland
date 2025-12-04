@@ -53,4 +53,20 @@ export interface User extends Document {
 
   // ✅ Fields for property owners
   propertyOwnerName?: string; // Property owner business name
+  propertyOwnerVerificationStatus?: 'pending' | 'approved' | 'rejected';
+  propertyOwnerVerifiedBy?: string;
+  propertyOwnerVerifiedAt?: Date;
+  propertyOwnerRejectedReason?: string;
+  verificationMessages?: Array<{
+    message: string;
+    sender: 'user' | 'admin';
+    senderName: string;
+    senderEmail: string;
+    timestamp: Date;
+  }>;
+  verificationDocuments?: string[];
+  
+  // Password reset fields
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
 }

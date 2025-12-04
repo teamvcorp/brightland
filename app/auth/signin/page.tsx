@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 
 function SignInForm() {
   const [email, setEmail] = useState('');
@@ -166,9 +167,9 @@ function SignInForm() {
                   </div>
 
                   <div className="text-sm/6">
-                    <a href="#" className="font-semibold text-indigo-600 hover:text-indigo-500">
+                    <Link href="/auth/forgot-password" className="font-semibold text-indigo-600 hover:text-indigo-500">
                       Forgot password?
-                    </a>
+                    </Link>
                   </div>
                 </div>
 

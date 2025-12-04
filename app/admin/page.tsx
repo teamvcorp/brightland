@@ -2079,6 +2079,24 @@ export default function AdminPage() {
   // Collapsible section states
   const [isPropertySectionCollapsed, setIsPropertySectionCollapsed] = useState(false);
   const [isApplicationsSectionCollapsed, setIsApplicationsSectionCollapsed] = useState(false);
+  const [isPropertyOwnerRequestsCollapsed, setIsPropertyOwnerRequestsCollapsed] = useState(false);
+  
+  // Property Owner Verification states
+  const [pendingPropertyOwners, setPendingPropertyOwners] = useState<any[]>([]);
+  const [selectedPendingOwner, setSelectedPendingOwner] = useState<any | null>(null);
+  const [showOwnerDetailsModal, setShowOwnerDetailsModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [adminMessage, setAdminMessage] = useState('');
+  
+  // Property approval fields
+  const [approvalPropertyName, setApprovalPropertyName] = useState('');
+  const [approvalPropertyAddress, setApprovalPropertyAddress] = useState({
+    street: '',
+    city: '',
+    state: '',
+    zip: ''
+  });
+  const [approvalPhone, setApprovalPhone] = useState('');
 
   // New: Deletion and conversation states
   const [viewFilter, setViewFilter] = useState<'active' | 'deleted'>('active');
@@ -2149,6 +2167,21 @@ export default function AdminPage() {
       console.error('Error fetching rental applications:', error);
     }
   }, []);
+  
+  const fetchPendingPropertyOwners = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/pending-property-owners');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Fetched pending property owners:', data);
+        setPendingPropertyOwners(data.pendingUsers || []);
+      } else {
+        console.error('Failed to fetch pending property owners:', response.status, await response.text());
+      }
+    } catch (error) {
+      console.error('Error fetching pending property owners:', error);
+    }
+  }, []);
 
   const checkAdminStatus = useCallback(async () => {
     try {
@@ -2164,11 +2197,12 @@ export default function AdminPage() {
       fetchPropertyOwners();
       fetchProperties();
       fetchRentalApplications();
+      fetchPendingPropertyOwners();
     } catch (error) {
       console.error('Error checking admin status:', error);
       router.push('/dashboard');
     }
-  }, [router, fetchRequests, fetchPropertyOwners, fetchProperties, fetchRentalApplications]);
+  }, [router, fetchRequests, fetchPropertyOwners, fetchProperties, fetchRentalApplications, fetchPendingPropertyOwners]);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -2385,6 +2419,122 @@ export default function AdminPage() {
     setShowPropertyForm(false);
     setEditingProperty(null);
   };
+  
+  // Property Owner Approval Handlers
+  const handleApprovePropertyOwner = async (userId: string, userName: string) => {
+    // Validate required fields
+    if (!approvalPropertyName.trim()) {
+      toast.error('Property name is required for approval');
+      return;
+    }
+    
+    if (!approvalPropertyAddress.street || !approvalPropertyAddress.city || 
+        !approvalPropertyAddress.state || !approvalPropertyAddress.zip) {
+      toast.error('Complete property address is required for approval');
+      return;
+    }
+    
+    if (!approvalPhone.trim()) {
+      toast.error('Phone number is required for approval');
+      return;
+    }
+    
+    const loadingToast = toast.loading(`Approving ${userName}...`);
+    try {
+      const response = await fetch(`/api/admin/approve-property-owner/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          propertyName: approvalPropertyName,
+          propertyAddress: approvalPropertyAddress,
+          phone: approvalPhone
+        }),
+      });
+      
+      if (response.ok) {
+        toast.success(`${userName} approved as property owner`, { id: loadingToast });
+        fetchPendingPropertyOwners();
+        setShowOwnerDetailsModal(false);
+        setSelectedPendingOwner(null);
+        setApprovalPropertyName('');
+        setApprovalPropertyAddress({ street: '', city: '', state: '', zip: '' });
+        setApprovalPhone('');
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Failed to approve property owner', { id: loadingToast });
+      }
+    } catch (error) {
+      toast.error('Error approving property owner', { id: loadingToast });
+    }
+  };
+  
+  const handleRejectPropertyOwner = async (userId: string, userName: string) => {
+    if (!rejectionReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
+    
+    const loadingToast = toast.loading(`Rejecting ${userName}...`);
+    try {
+      const response = await fetch(`/api/admin/reject-property-owner/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: rejectionReason }),
+      });
+      
+      if (response.ok) {
+        toast.success(`${userName} rejected and notified`, { id: loadingToast });
+        fetchPendingPropertyOwners();
+        setShowOwnerDetailsModal(false);
+        setSelectedPendingOwner(null);
+        setRejectionReason('');
+        setApprovalPropertyName('');
+        setApprovalPropertyAddress({ street: '', city: '', state: '', zip: '' });
+        setApprovalPhone('');
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Failed to reject property owner', { id: loadingToast });
+      }
+    } catch (error) {
+      toast.error('Error rejecting property owner', { id: loadingToast });
+    }
+  };
+  
+  const handleSendAdminMessage = async (userId: string) => {
+    if (!adminMessage.trim()) {
+      toast.error('Please enter a message');
+      return;
+    }
+    
+    const loadingToast = toast.loading('Sending message...');
+    try {
+      const response = await fetch(`/api/admin/send-verification-message/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: adminMessage }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        toast.success('Message sent', { id: loadingToast });
+        setAdminMessage('');
+        // Update the selected owner with new messages
+        if (selectedPendingOwner) {
+          setSelectedPendingOwner({
+            ...selectedPendingOwner,
+            verificationMessages: data.messages
+          });
+        }
+        // Refresh the list
+        fetchPendingPropertyOwners();
+      } else {
+        const data = await response.json();
+        toast.error(data.error || 'Failed to send message', { id: loadingToast });
+      }
+    } catch (error) {
+      toast.error('Error sending message', { id: loadingToast });
+    }
+  };
 
   const openModal = (request: ManagerRequest) => {
     setSelectedRequest(request);
@@ -2467,6 +2617,132 @@ export default function AdminPage() {
           propertyOwners={propertyOwners}
           onRequestSubmitted={fetchRequests}
         />
+
+        {/* Property Owner Verification Requests Section */}
+        <div className="mb-6 bg-white rounded-lg shadow-sm">
+          {/* Collapsible Header */}
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => setIsPropertyOwnerRequestsCollapsed(!isPropertyOwnerRequestsCollapsed)}
+          >
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <svg 
+                className={`w-5 h-5 transition-transform ${isPropertyOwnerRequestsCollapsed ? '-rotate-90' : 'rotate-0'}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+              Property Owner Requests ({pendingPropertyOwners.length} pending)
+            </h2>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fetchPendingPropertyOwners();
+                  toast.success('Refreshed pending property owners');
+                }}
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </button>
+              <span className="text-sm text-gray-500">
+                {isPropertyOwnerRequestsCollapsed ? 'Click to expand' : 'Click to collapse'}
+              </span>
+            </div>
+          </div>
+
+          {/* Collapsible Content */}
+          {!isPropertyOwnerRequestsCollapsed && (
+            <div className="p-4 pt-0">
+              {pendingPropertyOwners.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No pending property owner verification requests.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name & Contact
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Business Name
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Submitted
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Documents
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Messages
+                        </th>
+                        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {pendingPropertyOwners.map((owner) => (
+                        <tr key={owner._id} className="hover:bg-gray-50">
+                          <td className="py-4 px-4">
+                            <div className="font-medium text-gray-900">{owner.name}</div>
+                            <div className="text-sm text-gray-500">{owner.email}</div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="font-medium text-gray-900">{owner.propertyOwnerName}</div>
+                          </td>
+                          <td className="py-4 px-4 text-sm text-gray-500">
+                            {new Date(owner.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                              {owner.verificationDocuments?.length || 0} docs
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+                              {owner.verificationMessages?.length || 0} messages
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex flex-col gap-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedPendingOwner(owner);
+                                  setShowOwnerDetailsModal(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                              >
+                                View Details
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Approve ${owner.name} as a property owner for "${owner.propertyOwnerName}"?`)) {
+                                    handleApprovePropertyOwner(owner._id, owner.name);
+                                  }
+                                }}
+                                className="text-green-600 hover:text-green-800 font-medium text-sm"
+                              >
+                                ✓ Approve
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Property Management Section */}
         <div className="mb-6 bg-white rounded-lg shadow-sm">
@@ -3291,6 +3567,277 @@ export default function AdminPage() {
               fetchRequests(); // Refresh to show updated conversation count
             }}
           />
+        )}
+        
+        {/* Property Owner Details Modal */}
+        {showOwnerDetailsModal && selectedPendingOwner && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Property Owner Verification Request
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowOwnerDetailsModal(false);
+                    setSelectedPendingOwner(null);
+                    setRejectionReason('');
+                    setAdminMessage('');
+                    setApprovalPropertyName('');
+                    setApprovalPropertyAddress({ street: '', city: '', state: '', zip: '' });
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Modal Body */}
+              <div className="px-6 py-4 space-y-6">
+                {/* User Information */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-900 mb-3">Applicant Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600">Name</label>
+                      <p className="font-medium text-gray-900">{selectedPendingOwner.name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Email</label>
+                      <p className="font-medium text-gray-900">{selectedPendingOwner.email}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Business/Company Name</label>
+                      <p className="font-medium text-gray-900">{selectedPendingOwner.propertyOwnerName}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Submitted</label>
+                      <p className="font-medium text-gray-900">
+                        {new Date(selectedPendingOwner.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Verification Documents */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    Verification Documents ({selectedPendingOwner.verificationDocuments?.length || 0})
+                  </h4>
+                  {selectedPendingOwner.verificationDocuments && selectedPendingOwner.verificationDocuments.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedPendingOwner.verificationDocuments.map((doc: string, index: number) => (
+                        <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="text-sm font-medium text-gray-700">Document {index + 1}</span>
+                          </div>
+                          <a
+                            href={doc}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          >
+                            View Document →
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No documents uploaded yet</p>
+                  )}
+                </div>
+                
+                {/* Message History */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    Message History ({selectedPendingOwner.verificationMessages?.length || 0})
+                  </h4>
+                  {selectedPendingOwner.verificationMessages && selectedPendingOwner.verificationMessages.length > 0 ? (
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {selectedPendingOwner.verificationMessages.map((msg: any, index: number) => (
+                        <div
+                          key={index}
+                          className={`p-3 rounded-lg ${
+                            msg.sender === 'admin'
+                              ? 'bg-white border border-gray-200 ml-8'
+                              : 'bg-blue-50 border border-blue-200 mr-8'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-semibold text-gray-700">
+                              {msg.senderName} ({msg.sender})
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(msg.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-900">{msg.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No messages yet</p>
+                  )}
+                  
+                  {/* Send Message as Admin */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={adminMessage}
+                        onChange={(e) => setAdminMessage(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendAdminMessage(selectedPendingOwner._id);
+                          }
+                        }}
+                        placeholder="Type a message to the applicant..."
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <button
+                        onClick={() => handleSendAdminMessage(selectedPendingOwner._id)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                      >
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Property Information Section (Required for Approval) */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Property Information (Required for Approval)</h4>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Property Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={approvalPropertyName}
+                        onChange={(e) => setApprovalPropertyName(e.target.value)}
+                        placeholder="e.g., Sunshine Apartments"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Property Address <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={approvalPropertyAddress.street}
+                        onChange={(e) => setApprovalPropertyAddress(prev => ({ ...prev, street: e.target.value }))}
+                        placeholder="Street Address"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+                      />
+                      <div className="grid grid-cols-3 gap-2">
+                        <input
+                          type="text"
+                          value={approvalPropertyAddress.city}
+                          onChange={(e) => setApprovalPropertyAddress(prev => ({ ...prev, city: e.target.value }))}
+                          placeholder="City"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <input
+                          type="text"
+                          value={approvalPropertyAddress.state}
+                          onChange={(e) => setApprovalPropertyAddress(prev => ({ ...prev, state: e.target.value }))}
+                          placeholder="State"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <input
+                          type="text"
+                          value={approvalPropertyAddress.zip}
+                          onChange={(e) => setApprovalPropertyAddress(prev => ({ ...prev, zip: e.target.value }))}
+                          placeholder="ZIP"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Contact Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={approvalPhone}
+                        onChange={(e) => setApprovalPhone(e.target.value)}
+                        placeholder="(555) 555-5555"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-gray-600 mt-2">
+                    This information is required to create the property owner&apos;s account and first property listing.
+                  </p>
+                </div>
+                
+                {/* Rejection Reason Input (shown when rejecting) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Rejection Reason (required for rejection)
+                  </label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Provide a detailed reason for rejection..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    rows={3}
+                  />
+                </div>
+              </div>
+              
+              {/* Modal Footer */}
+              <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowOwnerDetailsModal(false);
+                    setSelectedPendingOwner(null);
+                    setRejectionReason('');
+                    setAdminMessage('');
+                    setApprovalPropertyName('');
+                    setApprovalPropertyAddress({ street: '', city: '', state: '', zip: '' });
+                    setApprovalPhone('');
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm(`Reject ${selectedPendingOwner.name}'s application? This will delete their account and send them an email notification.`)) {
+                      handleRejectPropertyOwner(selectedPendingOwner._id, selectedPendingOwner.name);
+                    }
+                  }}
+                  className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 font-medium"
+                >
+                  Reject Application
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm(`Approve ${selectedPendingOwner.name} as a property owner for "${selectedPendingOwner.propertyOwnerName}"?`)) {
+                      handleApprovePropertyOwner(selectedPendingOwner._id, selectedPendingOwner.name);
+                    }
+                  }}
+                  className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 font-medium"
+                >
+                  Approve Property Owner
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

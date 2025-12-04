@@ -120,6 +120,32 @@ export default function PropertyOwnerDashboard() {
       router.push('/dashboard');
       return;
     }
+    
+    // Check verification status
+    const checkVerificationStatus = async () => {
+      try {
+        const response = await fetch('/api/user/verification-status');
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Redirect to pending page if not approved
+          if (data.propertyOwnerVerificationStatus === 'pending') {
+            router.push('/property-owner-pending');
+            return;
+          }
+          
+          if (data.propertyOwnerVerificationStatus === 'rejected') {
+            toast.error('Your property owner application was rejected');
+            router.push('/dashboard');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking verification status:', error);
+      }
+    };
+    
+    checkVerificationStatus();
   }, [session, status, router]);
 
   // Fetch user's manager requests

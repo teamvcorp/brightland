@@ -58,6 +58,7 @@ function PaymentSetupFlow() {
     if (applicationId && session?.user?.email) {
       fetchApplication();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applicationId, session]);
 
   const fetchApplication = async () => {

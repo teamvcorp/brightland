@@ -21,6 +21,30 @@ export default function SubmitRequestPage() {
       router.push('/dashboard');
       return;
     }
+    
+    // Check verification status
+    const checkVerificationStatus = async () => {
+      try {
+        const response = await fetch('/api/user/verification-status');
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.propertyOwnerVerificationStatus === 'pending') {
+            router.push('/property-owner-pending');
+            return;
+          }
+          
+          if (data.propertyOwnerVerificationStatus === 'rejected') {
+            router.push('/dashboard');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking verification status:', error);
+      }
+    };
+    
+    checkVerificationStatus();
   }, [session, status, router]);
 
   if (status === 'loading') {

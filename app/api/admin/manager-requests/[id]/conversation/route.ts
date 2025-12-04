@@ -12,9 +12,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session || session.user.role !== 'admin') {
+    if (!session || !session.user?.email) {
       return NextResponse.json(
-        { error: 'Unauthorized - Admin access required' },
+        { error: 'Unauthorized - Please sign in' },
         { status: 401 }
       );
     }
@@ -39,14 +39,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
+    // Determine sender type and validate access
+    const isAdmin = session.user.role === 'admin';
+    const isPropertyOwner = session.user.userType === 'property-owner';
+    
+    if (!isAdmin && !isPropertyOwner) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Admin or Property Owner access required' },
+        { status: 403 }
+      );
+    }
+
     // Add message to conversation log
     const conversationMessage = {
-      sender: 'admin' as const,
-      senderName: session.user.name || 'Admin',
+      sender: isAdmin ? 'admin' as const : 'user' as const,
+      senderName: session.user.name || (isAdmin ? 'Admin' : 'Property Owner'),
       senderEmail: session.user.email || '',
       message: message.trim(),
       timestamp: new Date(),
-      isInternal: isInternal || false,
+      isInternal: isAdmin ? (isInternal || false) : false, // Only admins can send internal messages
     };
 
     request.conversationLog = request.conversationLog || [];
@@ -120,17 +131,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       );
     }
 
-    // Non-admins can only view their own requests
-    if (session.user.role !== 'admin' && request.email !== session.user.email) {
+    // Access control:
+    // - Admins can view all conversations
+    // - Property owners can view all conversations (they manage the properties)
+    // - Regular users can only view their own request conversations
+    const isAdmin = session.user.role === 'admin';
+    const isPropertyOwner = session.user.userType === 'property-owner';
+    const isOwnRequest = request.email === session.user.email;
+    
+    if (!isAdmin && !isPropertyOwner && !isOwnRequest) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+        { error: 'Unauthorized - You can only view your own requests' },
+        { status: 403 }
       );
     }
 
     // Filter out internal notes for non-admins
     let conversationLog = request.conversationLog || [];
-    if (session.user.role !== 'admin') {
+    if (!isAdmin) {
       conversationLog = conversationLog.filter((msg: ConversationMessage) => !msg.isInternal);
     }
     

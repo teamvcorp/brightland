@@ -51,6 +51,24 @@ const userSchema = new Schema<User>({
 
   // ✅ Fields for property owners
   propertyOwnerName: { type: String, default: '' }, // Property owner business name
+  propertyOwnerVerificationStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  propertyOwnerVerifiedBy: { type: String, default: '' }, // Admin email who verified
+  propertyOwnerVerifiedAt: { type: Date },
+  propertyOwnerRejectedReason: { type: String, default: '' },
+  
+  // Verification communication
+  verificationMessages: [{
+    message: String,
+    sender: { type: String, enum: ['user', 'admin'] },
+    senderName: String,
+    senderEmail: String,
+    timestamp: { type: Date, default: Date.now }
+  }],
+  verificationDocuments: [{ type: String }], // Array of document URLs
+  
+  // Password reset fields
+  passwordResetToken: { type: String },
+  passwordResetExpires: { type: Date },
 }, { timestamps: true });
 
 

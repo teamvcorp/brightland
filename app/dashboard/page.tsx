@@ -63,7 +63,32 @@ export default function DashboardPage() {
       return;
     }
     if (session?.user?.userType === 'property-owner') {
-      router.push('/property-owner-dashboard');
+      // Check verification status before redirecting
+      const checkVerificationStatus = async () => {
+        try {
+          const response = await fetch('/api/user/verification-status');
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.propertyOwnerVerificationStatus === 'pending') {
+              router.push('/property-owner-pending');
+            } else if (data.propertyOwnerVerificationStatus === 'approved') {
+              router.push('/property-owner-dashboard');
+            } else {
+              // Rejected or other status - stay on regular dashboard
+              return;
+            }
+          } else {
+            // If can't fetch status, redirect to dashboard anyway
+            router.push('/property-owner-dashboard');
+          }
+        } catch (error) {
+          console.error('Error checking verification status:', error);
+          router.push('/property-owner-dashboard');
+        }
+      };
+      
+      checkVerificationStatus();
       return;
     }
   }, [session, router]);

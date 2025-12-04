@@ -5,7 +5,7 @@ import { PropertyOwnerModel } from '@/models/PropertyOwner';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
-  const { name, email, password, userType, selectedProperty, propertyOwnerName, isNewPropertyOwner } = await req.json();
+  const { name, email, password, userType, selectedProperty, propertyOwnerName } = await req.json();
 
   if (!name || !email || !password || !userType) {
     return NextResponse.json({ message: 'Name, email, password, and user type are required' }, { status: 400 });
@@ -32,49 +32,8 @@ export async function POST(req: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Handle property owner creation if needed
-    if (userType === 'property-owner' && isNewPropertyOwner) {
-      try {
-        // Create new property owner with empty properties and users arrays
-        await PropertyOwnerModel.create({
-          name: propertyOwnerName,
-          email: email, // Use user's email for new property owner
-          phone: '(555) 000-0000', // Placeholder phone
-          properties: [], // Start with empty properties array
-          users: [{
-            name,
-            email,
-            password: hashedPassword,
-            userType,
-            isVerified: false,
-            identityVerificationStatus: 'pending',
-          }], // Add this user to the property owner's users array
-        });
-        console.log(`Created new property owner: ${propertyOwnerName} with initial user`);
-      } catch (error: any) {
-        // If property owner already exists, add user to existing property owner
-        if (error.message.includes('duplicate key')) {
-          await PropertyOwnerModel.findOneAndUpdate(
-            { name: propertyOwnerName },
-            {
-              $push: {
-                users: {
-                  name,
-                  email,
-                  password: hashedPassword,
-                  userType,
-                  isVerified: false,
-                  identityVerificationStatus: 'pending',
-                }
-              }
-            }
-          );
-          console.log(`Added user to existing property owner: ${propertyOwnerName}`);
-        } else {
-          throw error;
-        }
-      }
-    }
+    // Property owners no longer create PropertyOwner records on signup
+    // They remain in pending status until admin approval
 
     const userData: any = {
       name,
@@ -90,6 +49,7 @@ export async function POST(req: Request) {
       userData.selectedProperty = selectedProperty;
     } else if (userType === 'property-owner') {
       userData.propertyOwnerName = propertyOwnerName;
+      userData.propertyOwnerVerificationStatus = 'pending'; // Set to pending for admin approval
     }
 
     const user = await UserModel.create(userData);

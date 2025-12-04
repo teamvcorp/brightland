@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 
 interface ConversationMessage {
   sender: 'admin' | 'user';
@@ -17,11 +18,14 @@ interface ConversationLogProps {
 }
 
 export default function ConversationLog({ requestId, userEmail, onClose }: ConversationLogProps) {
+  const { data: session } = useSession();
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isInternal, setIsInternal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  
+  const isAdmin = session?.user?.role === 'admin';
 
   const fetchConversation = async () => {
     setLoading(true);
@@ -155,19 +159,21 @@ export default function ConversationLog({ requestId, userEmail, onClose }: Conve
               </button>
             </div>
           </div>
-          <div className="mt-2">
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={isInternal}
-                onChange={(e) => setIsInternal(e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span>
-                Internal note (admin-only, not sent to {userEmail})
-              </span>
-            </label>
-          </div>
+          {isAdmin && (
+            <div className="mt-2">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={isInternal}
+                  onChange={(e) => setIsInternal(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>
+                  Internal note (admin-only, not sent to {userEmail})
+                </span>
+              </label>
+            </div>
+          )}
         </div>
       </div>
     </div>

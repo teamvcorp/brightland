@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, useSession } from 'next-auth/react';
 import Image from 'next/image';
-import { useProperties, usePropertyOwners } from '../hooks';
+import { useProperties } from '../hooks';
 
 const SignUpContent = () => {
   const [formData, setFormData] = useState({
@@ -14,7 +14,6 @@ const SignUpContent = () => {
     userType: 'tenant' as 'tenant' | 'property-owner',
     selectedProperty: '',
     propertyOwnerName: '',
-    isNewPropertyOwner: false,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,7 +23,6 @@ const SignUpContent = () => {
   
   // Use custom hooks for data fetching
   const { properties, loading: propertiesLoading } = useProperties();
-  const { propertyOwners, loading: ownersLoading } = usePropertyOwners();
   
   // Get callback URL from search params
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
@@ -247,82 +245,25 @@ const SignUpContent = () => {
 
                 {/* Conditional fields for property owners */}
                 {formData.userType === 'property-owner' && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm/6 font-medium text-gray-900 mb-2">
-                        Property Owner Registration
-                      </label>
-                      <div className="space-y-2">
-                        <label className="flex items-center">
-                          <input
-                            type="radio"
-                            name="isNewPropertyOwner"
-                            value="false"
-                            checked={!formData.isNewPropertyOwner}
-                            onChange={(e) => setFormData({ ...formData, isNewPropertyOwner: false, propertyOwnerName: '' })}
-                            className="mr-2"
-                          />
-                          <span className="text-sm text-gray-700">Select existing property owner</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="radio"
-                            name="isNewPropertyOwner"
-                            value="true"
-                            checked={formData.isNewPropertyOwner}
-                            onChange={(e) => setFormData({ ...formData, isNewPropertyOwner: true, propertyOwnerName: '' })}
-                            className="mr-2"
-                          />
-                          <span className="text-sm text-gray-700">Register as new property owner</span>
-                        </label>
-                      </div>
+                  <div>
+                    <label htmlFor="propertyOwnerName" className="block text-sm/6 font-medium text-gray-900">
+                      Business/Company Name
+                    </label>
+                    <div className="mt-2">
+                      <input
+                        id="propertyOwnerName"
+                        name="propertyOwnerName"
+                        type="text"
+                        value={formData.propertyOwnerName}
+                        onChange={handleChange}
+                        required
+                        placeholder="Enter your business or company name"
+                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                      />
                     </div>
-
-                    {!formData.isNewPropertyOwner ? (
-                      <div>
-                        <label htmlFor="propertyOwnerName" className="block text-sm/6 font-medium text-gray-900">
-                          Select Property Owner
-                        </label>
-                        <div className="mt-2">
-                          <select
-                            id="propertyOwnerName"
-                            name="propertyOwnerName"
-                            value={formData.propertyOwnerName}
-                            onChange={handleChange}
-                            required
-                            className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
-                          >
-                            <option value="">{ownersLoading ? 'Loading property owners...' : 'Select an existing property owner...'}</option>
-                            {propertyOwners.map((owner: { name: string }, index: number) => (
-                              <option key={index} value={owner.name}>
-                                {owner.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <label htmlFor="propertyOwnerName" className="block text-sm/6 font-medium text-gray-900">
-                          New Property Owner Name
-                        </label>
-                        <div className="mt-2">
-                          <input
-                            id="propertyOwnerName"
-                            name="propertyOwnerName"
-                            type="text"
-                            value={formData.propertyOwnerName}
-                            onChange={handleChange}
-                            required
-                            placeholder="Enter property owner business name"
-                            className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
-                          />
-                        </div>
-                        <p className="mt-1 text-sm text-gray-500">
-                          This will create a new property owner record in the system.
-                        </p>
-                      </div>
-                    )}
+                    <p className="mt-2 text-sm text-gray-500">
+                      ⚠️ Your account will be pending verification by an administrator. You&apos;ll be notified once approved.
+                    </p>
                   </div>
                 )}
 
