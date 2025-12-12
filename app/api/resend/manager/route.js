@@ -176,10 +176,38 @@ export async function POST(request) {
 
     console.log('Sending email with subject:', emailSubject);
 
+    // Determine recipients based on user type
+    const recipients = [process.env.RESEND_TO_EMAIL || "your-receiving-email@domain.com"]; // Admin always gets it
+    
+    // For tenants, also send to property owner
+    if (userType === 'tenant' && address) {
+      try {
+        // Find property owner by matching address in their properties
+        const { PropertyOwnerModel } = await import('@/models/PropertyOwner');
+        
+        // Try to find a property owner with this address
+        const propertyOwner = await PropertyOwnerModel.findOne({
+          'properties.address.street': { $regex: new RegExp(address.split(',')[0], 'i') }
+        });
+        
+        if (propertyOwner && propertyOwner.email) {
+          console.log('Found property owner email:', propertyOwner.email);
+          recipients.push(propertyOwner.email);
+        } else {
+          console.log('No property owner found for address:', address);
+        }
+      } catch (propertyOwnerError) {
+        console.error('Error finding property owner:', propertyOwnerError);
+        // Continue with admin email only
+      }
+    }
+
+    console.log('Sending to recipients:', recipients);
+
     // Send email via Resend
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || "contact@your-domain.com",
-      to: process.env.RESEND_TO_EMAIL || "your-receiving-email@domain.com",
+      to: recipients,
       subject: emailSubject,
       html: emailHtml,
     });
