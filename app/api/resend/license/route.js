@@ -206,10 +206,5 @@ export async function POST(request) {
   }
 }
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
-};
+// Body size limit is now handled by Next.js App Router automatically
+// export const config = { api: { bodyParser: { sizeLimit: '10mb' } } }; // Deprecated in Next.js 16
