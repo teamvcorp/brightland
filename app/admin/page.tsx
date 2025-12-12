@@ -2236,7 +2236,7 @@ export default function AdminPage() {
       console.error('Error checking admin status:', error);
       router.push('/dashboard');
     }
-  }, [router, fetchRequests, fetchPropertyOwners, fetchProperties, fetchRentalApplications, fetchPendingPropertyOwners]);
+  }, [router, fetchRequests, fetchPropertyOwners, fetchProperties, fetchRentalApplications, fetchPendingPropertyOwners, fetchTenants]);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -4251,7 +4251,7 @@ export default function AdminPage() {
                     required
                   >
                     <option value="">Select a property...</option>
-                    {properties.map(property => (
+                    {allProperties.map(property => (
                       <option key={property._id} value={property.name}>
                         {property.name} - {property.address?.street}, {property.address?.city}
                       </option>
