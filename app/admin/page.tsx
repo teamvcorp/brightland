@@ -1081,8 +1081,9 @@ const RentalApplicationModal = ({
         updateData.isProrated = isProrated;
       }
 
-      const response = await fetch('/api/rental-application', {
-        method: 'PATCH',
+      // Use admin endpoint for status updates to ensure proper handling
+      const response = await fetch('/api/admin/update-application-status', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -1090,7 +1091,8 @@ const RentalApplicationModal = ({
       });
 
       if (response.ok) {
-        const updatedApplication = { 
+        const data = await response.json();
+        const updatedApplication = data.application || { 
           ...application, 
           status, 
           adminNotes, 
@@ -1105,7 +1107,8 @@ const RentalApplicationModal = ({
         onClose();
         toast.success('Application updated successfully!');
       } else {
-        toast.error('Failed to update application');
+        const error = await response.json();
+        toast.error(error.error || 'Failed to update application');
       }
     } catch (error) {
       console.error('Error updating application:', error);
@@ -4467,6 +4470,113 @@ export default function AdminPage() {
                       </p>
                     </div>
                   )}
+                </div>
+
+                {/* Rental Application Management */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-900 mb-3">Rental Application</h4>
+                  
+                  {/* Check if tenant has an application */}
+                  {(() => {
+                    const tenantApp = rentalApplications.find(app => app.userEmail === selectedTenant.email && !app.isArchived);
+                    
+                    if (tenantApp) {
+                      return (
+                        <div className="space-y-3">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-gray-900">Application Status:</span>
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
+                                tenantApp.status === 'approved' 
+                                  ? 'bg-green-100 text-green-800'
+                                  : tenantApp.status === 'denied'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {tenantApp.status.charAt(0).toUpperCase() + tenantApp.status.slice(1)}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <div><strong>Property:</strong> {tenantApp.listingName}</div>
+                              <div><strong>Move-in Date:</strong> {new Date(tenantApp.moveInDate).toLocaleDateString()}</div>
+                              {tenantApp.monthlyRent && (
+                                <div><strong>Monthly Rent:</strong> ${tenantApp.monthlyRent.toLocaleString()}</div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => {
+                              setSelectedApplication(tenantApp);
+                              setIsApplicationModalOpen(true);
+                            }}
+                            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                          >
+                            📋 View Full Application
+                          </button>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div className="space-y-3">
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+                            <p className="text-sm text-gray-600">No rental application on file</p>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              const listingName = prompt('Enter property name:');
+                              if (!listingName) return;
+                              
+                              const listingType = prompt('Enter property type (house, apartment, condo, etc):');
+                              if (!listingType) return;
+                              
+                              const monthlyRent = prompt('Enter monthly rent (optional):');
+                              const leaseStart = prompt('Enter lease start date (YYYY-MM-DD) (optional):');
+                              
+                              const adminNotes = prompt('Add any notes about this application (optional):');
+                              
+                              try {
+                                const response = await fetch('/api/admin/create-rental-application', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    tenantId: selectedTenant._id,
+                                    listingName,
+                                    listingType,
+                                    status: 'pending',
+                                    monthlyRent: monthlyRent ? parseFloat(monthlyRent) : undefined,
+                                    leaseStartDate: leaseStart || undefined,
+                                    adminNotes: adminNotes || 'Application created manually by admin'
+                                  })
+                                });
+                                
+                                const data = await response.json();
+                                
+                                if (data.success) {
+                                  toast.success('Rental application created successfully');
+                                  await fetchRentalApplications();
+                                  // Refresh to show the new application
+                                  const updatedTenant = tenants.find(t => t._id === selectedTenant._id);
+                                  if (updatedTenant) setSelectedTenant(updatedTenant);
+                                } else {
+                                  toast.error(data.error || 'Failed to create application');
+                                }
+                              } catch (error) {
+                                console.error('Error creating application:', error);
+                                toast.error('Error creating application');
+                              }
+                            }}
+                            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                          >
+                            ➕ Create Rental Application
+                          </button>
+                          <p className="text-xs text-gray-500 text-center">
+                            Create an application for tenants who applied in person
+                          </p>
+                        </div>
+                      );
+                    }
+                  })()}
                 </div>
               </div>
 

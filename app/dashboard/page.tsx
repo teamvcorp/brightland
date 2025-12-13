@@ -244,6 +244,59 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        {/* Auto-Pay Enrollment Section */}
+        {rentalApplications.some((app: RentalApplication) => app.status === 'approved') && (
+          <div className="mt-6 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Set Up Automatic Rent Payments
+                </h3>
+                <p className="text-sm text-gray-600 mt-2">
+                  Never miss a rent payment! Set up auto-pay with your bank account for convenient monthly billing.
+                </p>
+                {!defaultPayment || defaultPayment.type !== 'bank_account' ? (
+                  <div className="mt-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-yellow-800 flex items-center">
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        A checking account is required for auto-pay enrollment
+                      </p>
+                    </div>
+                    <Link href="/linkbank">
+                      <button className="w-full md:w-auto px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition-colors flex items-center justify-center">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Checking Account
+                      </button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-green-800 flex items-center">
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Checking account connected: {defaultPayment.brand} ****{defaultPayment.last4}
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-700">
+                      Your property manager will enable auto-pay once all payment setup requirements are complete.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mt-8 space-y-6">
           <div>
             <h3 className="text-lg font-medium text-gray-900">User Information</h3>
