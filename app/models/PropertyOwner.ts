@@ -75,7 +75,7 @@ const propertySchema = new Schema<Property>({
 const propertyOwnerUserSchema = new Schema<PropertyOwnerUser>({
   name: { type: String, required: true },
   email: { type: String, required: true },
-  password: { type: String, required: true },
+  password: { type: String }, // Changed from required to optional - users might use OAuth
   userType: { 
     type: String, 
     enum: ['tenant', 'property-owner'], 
