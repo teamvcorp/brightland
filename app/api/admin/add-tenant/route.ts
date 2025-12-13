@@ -4,6 +4,11 @@ import { authOptions } from '../../auth/authOptions';
 import { connectToDatabase } from '@/lib/mongodb';
 import { UserModel } from '@/models/User';
 import bcrypt from 'bcryptjs';
+import Stripe from 'stripe';
+
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-06-30.basil' })
+  : null;
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,7 +63,24 @@ export async function POST(request: NextRequest) {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create the tenant user
+    // Create Stripe customer for tenant (same as normal flow)
+    let stripeCustomerId: string | undefined;
+    if (stripe) {
+      try {
+        const customer = await stripe.customers.create({
+          email,
+          name,
+          phone: phone || undefined,
+        });
+        stripeCustomerId = customer.id;
+        console.log('Created Stripe customer:', stripeCustomerId);
+      } catch (stripeError: any) {
+        console.error('Failed to create Stripe customer:', stripeError);
+        // Continue without Stripe customer - admin can set up later
+      }
+    }
+
+    // Create the tenant user with same fields as normal signup flow
     const newTenant = await UserModel.create({
       name,
       email,
@@ -69,7 +91,13 @@ export async function POST(request: NextRequest) {
       address: address || undefined,
       isVerified: false,
       identityVerificationStatus: 'pending',
-      role: 'user'
+      role: 'user',
+      // Add Stripe customer ID if created
+      stripeCustomerId: stripeCustomerId || undefined,
+      // Payment method flags - initially false, tenant can set up later if needed
+      hasCheckingAccount: false,
+      hasCreditCard: false,
+      securityDepositPaid: false
     });
 
     console.log('Tenant created successfully:', {
