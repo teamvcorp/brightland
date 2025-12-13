@@ -2121,6 +2121,27 @@ export default function AdminPage() {
   const [selectedTenant, setSelectedTenant] = useState<any | null>(null);
   const [showTenantDetailsModal, setShowTenantDetailsModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
+  
+  // Rental Application Creation Modal states
+  const [showCreateApplicationModal, setShowCreateApplicationModal] = useState(false);
+  const [applicationForm, setApplicationForm] = useState({
+    selectedProperty: '',
+    selectedAddress: '',
+    monthlyRent: '',
+    leaseStartDate: '',
+    leaseEndDate: '',
+    enableAutoPay: false,
+    adminNotes: '',
+    // Payment method fields
+    accountHolderName: '',
+    routingNumber: '',
+    accountNumber: '',
+    accountType: 'checking' as 'checking' | 'savings',
+    // Card fields (if not auto-pay)
+    cardNumber: '',
+    cardExpiry: '',
+    cardCvc: ''
+  });
 
   // New: Deletion and conversation states
   const [viewFilter, setViewFilter] = useState<'active' | 'deleted'>('active');
@@ -4523,48 +4544,8 @@ export default function AdminPage() {
                             <p className="text-sm text-gray-600">No rental application on file</p>
                           </div>
                           <button
-                            onClick={async () => {
-                              const listingName = prompt('Enter property name:');
-                              if (!listingName) return;
-                              
-                              const listingType = prompt('Enter property type (house, apartment, condo, etc):');
-                              if (!listingType) return;
-                              
-                              const monthlyRent = prompt('Enter monthly rent (optional):');
-                              const leaseStart = prompt('Enter lease start date (YYYY-MM-DD) (optional):');
-                              
-                              const adminNotes = prompt('Add any notes about this application (optional):');
-                              
-                              try {
-                                const response = await fetch('/api/admin/create-rental-application', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    tenantId: selectedTenant._id,
-                                    listingName,
-                                    listingType,
-                                    status: 'pending',
-                                    monthlyRent: monthlyRent ? parseFloat(monthlyRent) : undefined,
-                                    leaseStartDate: leaseStart || undefined,
-                                    adminNotes: adminNotes || 'Application created manually by admin'
-                                  })
-                                });
-                                
-                                const data = await response.json();
-                                
-                                if (data.success) {
-                                  toast.success('Rental application created successfully');
-                                  await fetchRentalApplications();
-                                  // Refresh to show the new application
-                                  const updatedTenant = tenants.find(t => t._id === selectedTenant._id);
-                                  if (updatedTenant) setSelectedTenant(updatedTenant);
-                                } else {
-                                  toast.error(data.error || 'Failed to create application');
-                                }
-                              } catch (error) {
-                                console.error('Error creating application:', error);
-                                toast.error('Error creating application');
-                              }
+                            onClick={() => {
+                              setShowCreateApplicationModal(true);
                             }}
                             className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
                           >
@@ -4591,6 +4572,449 @@ export default function AdminPage() {
                   className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Rental Application Modal */}
+        {showCreateApplicationModal && selectedTenant && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Create Rental Application for {selectedTenant.name}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowCreateApplicationModal(false);
+                    setApplicationForm({
+                      selectedProperty: '',
+                      selectedAddress: '',
+                      monthlyRent: '',
+                      leaseStartDate: '',
+                      leaseEndDate: '',
+                      enableAutoPay: false,
+                      adminNotes: '',
+                      accountHolderName: '',
+                      routingNumber: '',
+                      accountNumber: '',
+                      accountType: 'checking',
+                      cardNumber: '',
+                      cardExpiry: '',
+                      cardCvc: ''
+                    });
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-6">
+                {/* Property Selection */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-4">Property Information</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Property Dropdown */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Property *
+                      </label>
+                      <select
+                        value={applicationForm.selectedProperty}
+                        onChange={(e) => {
+                          const property = allProperties.find(p => p._id === e.target.value);
+                          setApplicationForm(prev => ({
+                            ...prev,
+                            selectedProperty: e.target.value,
+                            selectedAddress: property ? `${property.address.street}, ${property.address.city}, ${property.address.state} ${property.address.zip}` : '',
+                            monthlyRent: property ? property.rent.toString() : ''
+                          }));
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="">-- Select a Property --</option>
+                        {allProperties.map((property) => (
+                          <option key={property._id} value={property._id}>
+                            {property.name} ({property.type})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Address Display */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Property Address
+                      </label>
+                      <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
+                        {applicationForm.selectedAddress || 'Select a property to see address'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lease Information */}
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold text-gray-900 mb-4">Lease Details</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Monthly Rent *
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-gray-500">$</span>
+                        <input
+                          type="number"
+                          value={applicationForm.monthlyRent}
+                          onChange={(e) => setApplicationForm(prev => ({ ...prev, monthlyRent: e.target.value }))}
+                          className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="0.00"
+                          step="0.01"
+                          min="0"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Lease Start Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={applicationForm.leaseStartDate}
+                        onChange={(e) => setApplicationForm(prev => ({ ...prev, leaseStartDate: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Lease End Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={applicationForm.leaseEndDate}
+                        onChange={(e) => setApplicationForm(prev => ({ ...prev, leaseEndDate: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Auto-Pay Option */}
+                <div className="border-t pt-4">
+                  <div className="flex items-start">
+                    <input
+                      type="checkbox"
+                      id="enableAutoPay"
+                      checked={applicationForm.enableAutoPay}
+                      onChange={(e) => setApplicationForm(prev => ({ ...prev, enableAutoPay: e.target.checked }))}
+                      className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="enableAutoPay" className="ml-3">
+                      <span className="block text-sm font-medium text-gray-900">
+                        Enable Auto-Pay for Rent Payments
+                      </span>
+                      <span className="block text-sm text-gray-500">
+                        Automatically charge rent on the 1st of each month via checking account
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Payment Method Setup */}
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold text-gray-900 mb-4">
+                    {applicationForm.enableAutoPay ? 'Checking Account (Required for Auto-Pay)' : 'Payment Method (Optional)'}
+                  </h4>
+                  
+                  {applicationForm.enableAutoPay ? (
+                    // Checking Account Form
+                    <div className="space-y-4">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-800">
+                          💳 Auto-pay requires a checking account. Enter the tenant&apos;s bank account details below.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Account Holder Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={applicationForm.accountHolderName}
+                            onChange={(e) => setApplicationForm(prev => ({ ...prev, accountHolderName: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Full name on account"
+                            required={applicationForm.enableAutoPay}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Account Type *
+                          </label>
+                          <select
+                            value={applicationForm.accountType}
+                            onChange={(e) => setApplicationForm(prev => ({ ...prev, accountType: e.target.value as 'checking' | 'savings' }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            required={applicationForm.enableAutoPay}
+                          >
+                            <option value="checking">Checking</option>
+                            <option value="savings">Savings</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Routing Number *
+                          </label>
+                          <input
+                            type="text"
+                            value={applicationForm.routingNumber}
+                            onChange={(e) => setApplicationForm(prev => ({ ...prev, routingNumber: e.target.value.replace(/\D/g, '') }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="9 digits"
+                            maxLength={9}
+                            required={applicationForm.enableAutoPay}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Account Number *
+                          </label>
+                          <input
+                            type="text"
+                            value={applicationForm.accountNumber}
+                            onChange={(e) => setApplicationForm(prev => ({ ...prev, accountNumber: e.target.value.replace(/\D/g, '') }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Account number"
+                            maxLength={17}
+                            required={applicationForm.enableAutoPay}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Credit Card Form (Optional)
+                    <div className="space-y-4">
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p className="text-sm text-yellow-800">
+                          💳 Optional: Add a credit card for one-time payments (fees, deposits, etc.)
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Card Number
+                          </label>
+                          <input
+                            type="text"
+                            value={applicationForm.cardNumber}
+                            onChange={(e) => setApplicationForm(prev => ({ ...prev, cardNumber: e.target.value.replace(/\D/g, '') }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="1234 5678 9012 3456"
+                            maxLength={16}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Expiry (MM/YY)
+                          </label>
+                          <input
+                            type="text"
+                            value={applicationForm.cardExpiry}
+                            onChange={(e) => {
+                              let value = e.target.value.replace(/\D/g, '');
+                              if (value.length >= 2) {
+                                value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                              }
+                              setApplicationForm(prev => ({ ...prev, cardExpiry: value }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="MM/YY"
+                            maxLength={5}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            CVC
+                          </label>
+                          <input
+                            type="text"
+                            value={applicationForm.cardCvc}
+                            onChange={(e) => setApplicationForm(prev => ({ ...prev, cardCvc: e.target.value.replace(/\D/g, '') }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="123"
+                            maxLength={4}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Admin Notes */}
+                <div className="border-t pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Admin Notes
+                  </label>
+                  <textarea
+                    value={applicationForm.adminNotes}
+                    onChange={(e) => setApplicationForm(prev => ({ ...prev, adminNotes: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Add any internal notes about this application..."
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="border-t px-6 py-4 flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowCreateApplicationModal(false);
+                    setApplicationForm({
+                      selectedProperty: '',
+                      selectedAddress: '',
+                      monthlyRent: '',
+                      leaseStartDate: '',
+                      leaseEndDate: '',
+                      enableAutoPay: false,
+                      adminNotes: '',
+                      accountHolderName: '',
+                      routingNumber: '',
+                      accountNumber: '',
+                      accountType: 'checking',
+                      cardNumber: '',
+                      cardExpiry: '',
+                      cardCvc: ''
+                    });
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    // Validation
+                    if (!applicationForm.selectedProperty) {
+                      toast.error('Please select a property');
+                      return;
+                    }
+                    if (!applicationForm.monthlyRent || parseFloat(applicationForm.monthlyRent) <= 0) {
+                      toast.error('Please enter a valid monthly rent');
+                      return;
+                    }
+                    if (!applicationForm.leaseStartDate || !applicationForm.leaseEndDate) {
+                      toast.error('Please select lease start and end dates');
+                      return;
+                    }
+                    if (applicationForm.enableAutoPay) {
+                      if (!applicationForm.accountHolderName || !applicationForm.routingNumber || !applicationForm.accountNumber) {
+                        toast.error('Please fill in all checking account fields for auto-pay');
+                        return;
+                      }
+                      if (applicationForm.routingNumber.length !== 9) {
+                        toast.error('Routing number must be 9 digits');
+                        return;
+                      }
+                    }
+
+                    const property = allProperties.find(p => p._id === applicationForm.selectedProperty);
+                    if (!property) {
+                      toast.error('Selected property not found');
+                      return;
+                    }
+
+                    try {
+                      const loadingToast = toast.loading('Creating rental application...');
+
+                      const response = await fetch('/api/admin/create-rental-application', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          tenantId: selectedTenant._id,
+                          listingName: property.name,
+                          listingType: property.type,
+                          status: 'pending',
+                          monthlyRent: parseFloat(applicationForm.monthlyRent),
+                          leaseStartDate: applicationForm.leaseStartDate,
+                          leaseEndDate: applicationForm.leaseEndDate,
+                          adminNotes: applicationForm.adminNotes || 'Application created manually by admin',
+                          // Payment method data
+                          enableAutoPay: applicationForm.enableAutoPay,
+                          paymentMethod: applicationForm.enableAutoPay ? {
+                            type: 'bank_account',
+                            accountHolderName: applicationForm.accountHolderName,
+                            routingNumber: applicationForm.routingNumber,
+                            accountNumber: applicationForm.accountNumber,
+                            accountType: applicationForm.accountType
+                          } : (applicationForm.cardNumber ? {
+                            type: 'card',
+                            cardNumber: applicationForm.cardNumber,
+                            cardExpiry: applicationForm.cardExpiry,
+                            cardCvc: applicationForm.cardCvc
+                          } : null)
+                        })
+                      });
+
+                      const data = await response.json();
+
+                      if (data.success) {
+                        toast.success('Rental application created successfully!', { id: loadingToast });
+                        await fetchRentalApplications();
+                        await fetchTenants();
+                        setShowCreateApplicationModal(false);
+                        setApplicationForm({
+                          selectedProperty: '',
+                          selectedAddress: '',
+                          monthlyRent: '',
+                          leaseStartDate: '',
+                          leaseEndDate: '',
+                          enableAutoPay: false,
+                          adminNotes: '',
+                          accountHolderName: '',
+                          routingNumber: '',
+                          accountNumber: '',
+                          accountType: 'checking',
+                          cardNumber: '',
+                          cardExpiry: '',
+                          cardCvc: ''
+                        });
+                        // Refresh tenant to show new application
+                        const updatedTenant = tenants.find(t => t._id === selectedTenant._id);
+                        if (updatedTenant) setSelectedTenant(updatedTenant);
+                      } else {
+                        toast.error(data.error || 'Failed to create application', { id: loadingToast });
+                      }
+                    } catch (error) {
+                      console.error('Error creating application:', error);
+                      toast.error('Error creating application');
+                    }
+                  }}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                >
+                  Create Application
                 </button>
               </div>
             </div>

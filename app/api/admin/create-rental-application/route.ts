@@ -4,6 +4,11 @@ import { authOptions } from '../../auth/authOptions';
 import { connectToDatabase } from '../../../lib/mongodb';
 import { RentalApplicationModel } from '../../../models/RentalApplication';
 import { UserModel } from '../../../models/User';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-06-30.basil',
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +28,8 @@ export async function POST(request: NextRequest) {
       leaseStartDate,
       leaseEndDate,
       adminNotes,
+      enableAutoPay = false,
+      paymentMethod = null,
     } = body;
 
     if (!tenantId || !listingName || !listingType) {
@@ -56,6 +63,92 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let achPaymentMethodId = null;
+    let cardPaymentMethodId = null;
+    let hasCheckingAccount = tenant.hasCheckingAccount || false;
+    let hasCreditCard = tenant.hasCreditCard || false;
+
+    // Create payment method in Stripe if provided
+    if (paymentMethod && tenant.stripeCustomerId) {
+      try {
+        if (paymentMethod.type === 'bank_account') {
+          // Create bank account token first
+          const token = await stripe.tokens.create({
+            bank_account: {
+              country: 'US',
+              currency: 'usd',
+              account_holder_name: paymentMethod.accountHolderName,
+              account_holder_type: 'individual',
+              routing_number: paymentMethod.routingNumber,
+              account_number: paymentMethod.accountNumber,
+            },
+          });
+
+          // Create payment method from token
+          const pm = await stripe.paymentMethods.create({
+            type: 'us_bank_account',
+            us_bank_account: {
+              account_holder_type: 'individual',
+              routing_number: paymentMethod.routingNumber,
+              account_number: paymentMethod.accountNumber,
+            },
+          });
+
+          // Attach to customer
+          await stripe.paymentMethods.attach(pm.id, {
+            customer: tenant.stripeCustomerId,
+          });
+
+          // Set as default payment method
+          await stripe.customers.update(tenant.stripeCustomerId, {
+            invoice_settings: {
+              default_payment_method: pm.id,
+            },
+          });
+
+          achPaymentMethodId = pm.id;
+          hasCheckingAccount = true;
+
+          // Update user record
+          await UserModel.findByIdAndUpdate(tenantId, {
+            hasCheckingAccount: true,
+          });
+        } else if (paymentMethod.type === 'card') {
+          // Create card payment method
+          const [month, year] = paymentMethod.cardExpiry.split('/');
+          
+          const pm = await stripe.paymentMethods.create({
+            type: 'card',
+            card: {
+              number: paymentMethod.cardNumber,
+              exp_month: parseInt(month),
+              exp_year: parseInt('20' + year),
+              cvc: paymentMethod.cardCvc,
+            },
+          });
+
+          // Attach to customer
+          await stripe.paymentMethods.attach(pm.id, {
+            customer: tenant.stripeCustomerId,
+          });
+
+          cardPaymentMethodId = pm.id;
+          hasCreditCard = true;
+
+          // Update user record
+          await UserModel.findByIdAndUpdate(tenantId, {
+            hasCreditCard: true,
+          });
+        }
+      } catch (stripeError: any) {
+        console.error('Stripe payment method creation error:', stripeError);
+        return NextResponse.json(
+          { error: `Failed to create payment method: ${stripeError.message}` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Create rental application with tenant info
     const applicationData = {
       listingName,
@@ -79,9 +172,11 @@ export async function POST(request: NextRequest) {
       monthlyRent,
       leaseStartDate,
       leaseEndDate,
-      hasCheckingAccount: tenant.hasCheckingAccount || false,
-      hasCreditCard: tenant.hasCreditCard || false,
+      hasCheckingAccount,
+      hasCreditCard,
       securityDepositPaid: tenant.securityDepositPaid || false,
+      achPaymentMethodId,
+      cardPaymentMethodId,
     };
 
     const application = new RentalApplicationModel(applicationData);
@@ -91,6 +186,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Rental application created successfully',
       applicationId: application._id.toString(),
+      paymentMethodCreated: achPaymentMethodId || cardPaymentMethodId ? true : false,
     });
 
   } catch (error) {
