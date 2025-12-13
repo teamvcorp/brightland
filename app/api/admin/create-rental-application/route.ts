@@ -64,82 +64,53 @@ export async function POST(request: NextRequest) {
     }
 
     let achPaymentMethodId = null;
-    let cardPaymentMethodId = null;
     let hasCheckingAccount = tenant.hasCheckingAccount || false;
-    let hasCreditCard = tenant.hasCreditCard || false;
 
-    // Create payment method in Stripe if provided
-    if (paymentMethod && tenant.stripeCustomerId) {
+    // Create bank account payment method if provided (for auto-pay)
+    // Note: Cards cannot be created server-side due to PCI compliance - tenant must add via Stripe Elements
+    if (paymentMethod && paymentMethod.type === 'bank_account' && tenant.stripeCustomerId) {
       try {
-        if (paymentMethod.type === 'bank_account') {
-          // Create bank account token first
-          const token = await stripe.tokens.create({
-            bank_account: {
-              country: 'US',
-              currency: 'usd',
-              account_holder_name: paymentMethod.accountHolderName,
-              account_holder_type: 'individual',
-              routing_number: paymentMethod.routingNumber,
-              account_number: paymentMethod.accountNumber,
-            },
-          });
+        // Create bank account token
+        const token = await stripe.tokens.create({
+          bank_account: {
+            country: 'US',
+            currency: 'usd',
+            account_holder_name: paymentMethod.accountHolderName,
+            account_holder_type: 'individual',
+            routing_number: paymentMethod.routingNumber,
+            account_number: paymentMethod.accountNumber,
+          },
+        });
 
-          // Create payment method from token
-          const pm = await stripe.paymentMethods.create({
-            type: 'us_bank_account',
-            us_bank_account: {
-              account_holder_type: 'individual',
-              routing_number: paymentMethod.routingNumber,
-              account_number: paymentMethod.accountNumber,
-            },
-          });
+        // Create payment method from token
+        const pm = await stripe.paymentMethods.create({
+          type: 'us_bank_account',
+          us_bank_account: {
+            account_holder_type: 'individual',
+            routing_number: paymentMethod.routingNumber,
+            account_number: paymentMethod.accountNumber,
+          },
+        });
 
-          // Attach to customer
-          await stripe.paymentMethods.attach(pm.id, {
-            customer: tenant.stripeCustomerId,
-          });
+        // Attach to customer
+        await stripe.paymentMethods.attach(pm.id, {
+          customer: tenant.stripeCustomerId,
+        });
 
-          // Set as default payment method
-          await stripe.customers.update(tenant.stripeCustomerId, {
-            invoice_settings: {
-              default_payment_method: pm.id,
-            },
-          });
+        // Set as default payment method
+        await stripe.customers.update(tenant.stripeCustomerId, {
+          invoice_settings: {
+            default_payment_method: pm.id,
+          },
+        });
 
-          achPaymentMethodId = pm.id;
-          hasCheckingAccount = true;
+        achPaymentMethodId = pm.id;
+        hasCheckingAccount = true;
 
-          // Update user record
-          await UserModel.findByIdAndUpdate(tenantId, {
-            hasCheckingAccount: true,
-          });
-        } else if (paymentMethod.type === 'card') {
-          // Create card payment method
-          const [month, year] = paymentMethod.cardExpiry.split('/');
-          
-          const pm = await stripe.paymentMethods.create({
-            type: 'card',
-            card: {
-              number: paymentMethod.cardNumber,
-              exp_month: parseInt(month),
-              exp_year: parseInt('20' + year),
-              cvc: paymentMethod.cardCvc,
-            },
-          });
-
-          // Attach to customer
-          await stripe.paymentMethods.attach(pm.id, {
-            customer: tenant.stripeCustomerId,
-          });
-
-          cardPaymentMethodId = pm.id;
-          hasCreditCard = true;
-
-          // Update user record
-          await UserModel.findByIdAndUpdate(tenantId, {
-            hasCreditCard: true,
-          });
-        }
+        // Update user record
+        await UserModel.findByIdAndUpdate(tenantId, {
+          hasCheckingAccount: true,
+        });
       } catch (stripeError: any) {
         console.error('Stripe payment method creation error:', stripeError);
         return NextResponse.json(
@@ -173,10 +144,9 @@ export async function POST(request: NextRequest) {
       leaseStartDate,
       leaseEndDate,
       hasCheckingAccount,
-      hasCreditCard,
+      hasCreditCard: tenant.hasCreditCard || false,
       securityDepositPaid: tenant.securityDepositPaid || false,
       achPaymentMethodId,
-      cardPaymentMethodId,
     };
 
     const application = new RentalApplicationModel(applicationData);
@@ -186,7 +156,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Rental application created successfully',
       applicationId: application._id.toString(),
-      paymentMethodCreated: achPaymentMethodId || cardPaymentMethodId ? true : false,
+      bankAccountAdded: achPaymentMethodId ? true : false,
     });
 
   } catch (error) {

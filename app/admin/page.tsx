@@ -4738,7 +4738,7 @@ export default function AdminPage() {
                 {/* Payment Method Setup */}
                 <div className="border-t pt-4">
                   <h4 className="font-semibold text-gray-900 mb-4">
-                    {applicationForm.enableAutoPay ? 'Checking Account (Required for Auto-Pay)' : 'Payment Method (Optional)'}
+                    {applicationForm.enableAutoPay ? 'Checking Account (Required for Auto-Pay)' : 'Payment Method'}
                   </h4>
                   
                   {applicationForm.enableAutoPay ? (
@@ -4812,63 +4812,11 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ) : (
-                    // Credit Card Form (Optional)
-                    <div className="space-y-4">
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                        <p className="text-sm text-yellow-800">
-                          💳 Optional: Add a credit card for one-time payments (fees, deposits, etc.)
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Card Number
-                          </label>
-                          <input
-                            type="text"
-                            value={applicationForm.cardNumber}
-                            onChange={(e) => setApplicationForm(prev => ({ ...prev, cardNumber: e.target.value.replace(/\D/g, '') }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="1234 5678 9012 3456"
-                            maxLength={16}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Expiry (MM/YY)
-                          </label>
-                          <input
-                            type="text"
-                            value={applicationForm.cardExpiry}
-                            onChange={(e) => {
-                              let value = e.target.value.replace(/\D/g, '');
-                              if (value.length >= 2) {
-                                value = value.slice(0, 2) + '/' + value.slice(2, 4);
-                              }
-                              setApplicationForm(prev => ({ ...prev, cardExpiry: value }));
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="MM/YY"
-                            maxLength={5}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            CVC
-                          </label>
-                          <input
-                            type="text"
-                            value={applicationForm.cardCvc}
-                            onChange={(e) => setApplicationForm(prev => ({ ...prev, cardCvc: e.target.value.replace(/\D/g, '') }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="123"
-                            maxLength={4}
-                          />
-                        </div>
-                      </div>
+                    // No payment method needed if auto-pay disabled
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <p className="text-sm text-gray-600">
+                        ℹ️ Payment methods are not required during application creation. Tenant can add their own checking account or credit card later from their dashboard for one-time payments (security deposit, fees, etc.).
+                      </p>
                     </div>
                   )}
                 </div>
@@ -4961,7 +4909,7 @@ export default function AdminPage() {
                           leaseStartDate: applicationForm.leaseStartDate,
                           leaseEndDate: applicationForm.leaseEndDate,
                           adminNotes: applicationForm.adminNotes || 'Application created manually by admin',
-                          // Payment method data
+                          // Payment method data (bank account only, cards must be added via Stripe Elements)
                           enableAutoPay: applicationForm.enableAutoPay,
                           paymentMethod: applicationForm.enableAutoPay ? {
                             type: 'bank_account',
@@ -4969,12 +4917,7 @@ export default function AdminPage() {
                             routingNumber: applicationForm.routingNumber,
                             accountNumber: applicationForm.accountNumber,
                             accountType: applicationForm.accountType
-                          } : (applicationForm.cardNumber ? {
-                            type: 'card',
-                            cardNumber: applicationForm.cardNumber,
-                            cardExpiry: applicationForm.cardExpiry,
-                            cardCvc: applicationForm.cardCvc
-                          } : null)
+                          } : null
                         })
                       });
 
