@@ -59,15 +59,15 @@ const propertySchema = new Schema<Property>({
   amenities: { type: String, required: true },
   status: { 
     type: String, 
-    enum: ['available', 'rented', 'under-remodel', 'maintenance'], 
+    enum: ['available', 'rented', 'under-remodel', 'maintenance', 'being-remodeled'], 
     default: 'available' 
   },
   picture: { type: String },
   address: {
     street: { type: String, required: true },
     city: { type: String, required: true },
-    state: { type: String, required: true },
-    zip: { type: String, required: true },
+    state: { type: String },
+    zip: { type: String },
   },
 }, { timestamps: true });
 

@@ -26,14 +26,14 @@ export async function POST(
 
     const { id: userId } = await params;
     const body = await request.json();
-    const { propertyName, propertyAddress, phone } = body;
+    const { phone } = body;
 
-    console.log('Approving property owner:', { userId, propertyName, propertyAddress, phone });
+    console.log('Approving property owner:', { userId, phone });
 
     // Validate required fields
-    if (!propertyName || !propertyAddress?.street || !propertyAddress?.city || !propertyAddress?.state || !propertyAddress?.zip || !phone) {
+    if (!phone) {
       return NextResponse.json({ 
-        error: 'Property name, complete address, and phone number are required for approval' 
+        error: 'Phone number is required for approval' 
       }, { status: 400 });
     }
     
@@ -65,45 +65,18 @@ export async function POST(
     // Check if PropertyOwner exists with this name
     let propertyOwner = await PropertyOwnerModel.findOne({ name: user.propertyOwnerName });
     
-    // If PropertyOwner doesn't exist, create it with the property
+    // If PropertyOwner doesn't exist, create it (this should rarely happen - user signup should create it)
     if (!propertyOwner) {
       propertyOwner = await PropertyOwnerModel.create({
         name: user.propertyOwnerName,
         email: user.email,
         phone: phone,
         users: [],
-        properties: [{
-          name: propertyName,
-          type: 'residential', // Default type
-          sqft: 0, // Will be updated later
-          description: 'Property pending details update',
-          rent: 0, // Will be updated later
-          amenities: 'To be updated',
-          status: 'available',
-          address: propertyAddress
-        }]
+        properties: [] // No properties during user approval - properties are added separately
       });
-      console.log('Created new PropertyOwner with property:', { 
+      console.log('Created new PropertyOwner (no properties):', { 
         propertyOwnerId: propertyOwner._id,
-        propertyOwnerName: propertyOwner.name,
-        propertyCount: propertyOwner.properties.length 
-      });
-    } else {
-      // Add property to existing PropertyOwner
-      propertyOwner.properties.push({
-        name: propertyName,
-        type: 'residential',
-        sqft: 0,
-        description: 'Property pending details update',
-        rent: 0,
-        amenities: 'To be updated',
-        status: 'available',
-        address: propertyAddress
-      } as any);
-      await propertyOwner.save();
-      console.log('Added property to existing PropertyOwner:', {
-        propertyOwnerId: propertyOwner._id,
-        propertyCount: propertyOwner.properties.length
+        propertyOwnerName: propertyOwner.name
       });
     }
     

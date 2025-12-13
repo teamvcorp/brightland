@@ -2481,17 +2481,6 @@ export default function AdminPage() {
   // Property Owner Approval Handlers
   const handleApprovePropertyOwner = async (userId: string, userName: string) => {
     // Validate required fields
-    if (!approvalPropertyName.trim()) {
-      toast.error('Property name is required for approval');
-      return;
-    }
-    
-    if (!approvalPropertyAddress.street || !approvalPropertyAddress.city || 
-        !approvalPropertyAddress.state || !approvalPropertyAddress.zip) {
-      toast.error('Complete property address is required for approval');
-      return;
-    }
-    
     if (!approvalPhone.trim()) {
       toast.error('Phone number is required for approval');
       return;
@@ -2503,8 +2492,6 @@ export default function AdminPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          propertyName: approvalPropertyName,
-          propertyAddress: approvalPropertyAddress,
           phone: approvalPhone
         }),
       });
@@ -4071,53 +4058,13 @@ export default function AdminPage() {
                   <h4 className="text-sm font-medium text-gray-900 mb-3">Property Information (Required for Approval)</h4>
                   
                   <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Property Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={approvalPropertyName}
-                        onChange={(e) => setApprovalPropertyName(e.target.value)}
-                        placeholder="e.g., Sunshine Apartments"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Property Address <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={approvalPropertyAddress.street}
-                        onChange={(e) => setApprovalPropertyAddress(prev => ({ ...prev, street: e.target.value }))}
-                        placeholder="Street Address"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
-                      />
-                      <div className="grid grid-cols-3 gap-2">
-                        <input
-                          type="text"
-                          value={approvalPropertyAddress.city}
-                          onChange={(e) => setApprovalPropertyAddress(prev => ({ ...prev, city: e.target.value }))}
-                          placeholder="City"
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <input
-                          type="text"
-                          value={approvalPropertyAddress.state}
-                          onChange={(e) => setApprovalPropertyAddress(prev => ({ ...prev, state: e.target.value }))}
-                          placeholder="State"
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <input
-                          type="text"
-                          value={approvalPropertyAddress.zip}
-                          onChange={(e) => setApprovalPropertyAddress(prev => ({ ...prev, zip: e.target.value }))}
-                          placeholder="ZIP"
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        <strong>Property Owner:</strong> {selectedPendingOwner?.propertyOwnerName || 'Not specified'}
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Approving this user will add them to the existing PropertyOwner organization. Properties are managed separately.
+                      </p>
                     </div>
                     
                     <div>
@@ -4135,7 +4082,7 @@ export default function AdminPage() {
                   </div>
                   
                   <p className="text-xs text-gray-600 mt-2">
-                    This information is required to create the property owner&apos;s account and first property listing.
+                    Phone number is used for property owner contact information.
                   </p>
                 </div>
                 
