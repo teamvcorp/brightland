@@ -2519,9 +2519,32 @@ export default function AdminPage() {
         setApprovalPhone('');
       } else {
         const data = await response.json();
-        toast.error(data.error || 'Failed to approve property owner', { id: loadingToast });
+        console.error('Approval failed:', data);
+        
+        // Display detailed error message
+        let errorMessage = data.error || 'Failed to approve property owner';
+        if (data.details) {
+          errorMessage += `: ${data.details}`;
+        }
+        if (data.validationErrors && data.validationErrors.length > 0) {
+          const validationDetails = data.validationErrors.map((err: any) => 
+            `${err.field}: ${err.message}`
+          ).join(', ');
+          errorMessage += ` (Validation errors: ${validationDetails})`;
+        }
+        
+        console.error('Full error details:', {
+          error: data.error,
+          details: data.details,
+          errorType: data.errorType,
+          validationErrors: data.validationErrors,
+          stack: data.stack
+        });
+        
+        toast.error(errorMessage, { id: loadingToast, duration: 6000 });
       }
     } catch (error) {
+      console.error('Exception during approval:', error);
       toast.error('Error approving property owner', { id: loadingToast });
     }
   };

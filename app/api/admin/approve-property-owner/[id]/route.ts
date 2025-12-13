@@ -152,8 +152,21 @@ export async function POST(
     console.error('Error stack:', error.stack);
     console.error('Error name:', error.name);
     console.error('Error message:', error.message);
+    
+    // Return detailed error information
     return NextResponse.json(
-      { error: 'Failed to approve property owner', details: error.message },
+      { 
+        error: 'Failed to approve property owner', 
+        details: error.message,
+        errorType: error.name,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        // Include validation errors if it's a MongoDB validation error
+        validationErrors: error.errors ? Object.keys(error.errors).map(key => ({
+          field: key,
+          message: error.errors[key].message,
+          value: error.errors[key].value
+        })) : undefined
+      },
       { status: 500 }
     );
   }
